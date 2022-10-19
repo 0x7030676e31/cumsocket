@@ -1,0 +1,10 @@
+.vscode/
+build/
+node_modules/
+
+.env
+cumsocket.code-workspace
+package-lock.json
+
+# Temp
+src/prototype
