@@ -1,4 +1,3 @@
 # TODO
-- Api (Queue?, Buckets, Request manager)
-- Permission system still to do
+- Permission system (still model is todo)
 - Sql databse?

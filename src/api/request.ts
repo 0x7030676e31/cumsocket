@@ -1,8 +1,6 @@
 import fetch from "node-fetch";
 import init from "../op2.json";
 
-let test = 0;
-
 class Api {
   private _buckets: { [key: string]: [number, ...[Payload, (value: unknown) => void, (reason?: any) => void][]] } = {};
   private _globalLimit: number = 0;
@@ -33,11 +31,12 @@ class Api {
     return Object.assign(structuredClone(this._headers), { Authorization: process.env.token! });
   }
 
-  // generate nonce (for message confirmation)
-  private getNonce(): string {  
-    return ((new Date().getTime() - 1420070400000) << 22).toString();
-  }
+  // generate nonce (for message confirmation) TOFIX
+  // private getNonce(): string {  
+  //   return ((new Date().getTime() - 1420070400000) << 22).toString();
+  // }
 
+  // execute the request (all networking stuff)
   private async exec(bucket: string) {
     const entry = this._buckets[bucket][1];
     const payload = entry[0];
@@ -46,9 +45,10 @@ class Api {
     const url = `${this._api}${Object.entries(payload.path).map(([key, value]) => `/${key}/${value}`).join("")}${payload.endpoint ? `/${payload.endpoint}` : ""}`;
     const query = payload.query ? `?${Object.entries(payload.query).map(([key, value]) => `${key}=${value}`).join("&")}` : "";
 
-    const body = payload.noBody ? undefined : JSON.stringify(Object.assign(payload.body ?? {}, payload.nonce ? { nonce: this.getNonce() } : {}));
+    const body = payload.noBody ? undefined : JSON.stringify(Object.assign(payload.body ?? {}, payload.nonce ? { nonce: /* this.getNonce() */ 0 } : {}));
     const headers = !payload.headers && payload.noDefaultHeaders ? undefined : Object.assign(payload.noDefaultHeaders ? {} : this.getHeader(), payload.headers ?? {});
     
+    // fetch data
     const req = await fetch(encodeURI(url + query), {
       method: payload.method ?? "POST",
       body,
@@ -63,6 +63,7 @@ class Api {
         this._globalLimit = response.retry_after * 1000;
       }
 
+      // wait for ratelimit to end
       setTimeout(this.exec.bind(this, bucket), response.retry_after * 1000);
       console.warn(response.message);
       return;
@@ -80,17 +81,21 @@ class Api {
     }
   }
 
+  // fetch data from discord api (add to bucket queue)
   public async fetch(bucket: string, payload: Payload): Promise<any> {
+    // return new promise that resolves when request is done
     return new Promise((resolve, reject) => {
       if (!this._buckets[bucket]) this._buckets[bucket] = [0];
       this._buckets[bucket].push([payload, resolve, reject]);
       if (this._buckets[bucket][0] !== 0 || this._buckets[bucket].length !== 2) return;
       
+      // check if global ratelimit is active
       if (this._globalLimit === 0) {
         this.exec(bucket);
         return;
       }
 
+      // wait for global ratelimit to end
       if (this._globalLimitBuckets.includes(bucket)) return;
       this._globalLimitBuckets.push(bucket);
       setTimeout(this.exec.bind(this, bucket), this._globalLimit);
