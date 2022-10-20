@@ -1,8 +1,12 @@
 import fetch from "node-fetch";
 import init from "../op2.json";
 
+let test = 0;
+
 class Api {
   private _buckets: { [key: string]: [number, ...[Payload, (value: unknown) => void, (reason?: any) => void][]] } = {};
+  private _globalLimit: number = 0;
+  private _globalLimitBuckets: string[] = [];
 
   private readonly _api = "https://discord.com/api/v10";
   private readonly _super_properties = Buffer.from(JSON.stringify(init.d.properties)).toString("base64");
@@ -36,16 +40,60 @@ class Api {
 
   private async exec(bucket: string) {
     const entry = this._buckets[bucket][1];
+    const payload = entry[0];
 
+    // send request
+    const url = `${this._api}${Object.entries(payload.path).map(([key, value]) => `/${key}/${value}`).join("")}${payload.endpoint ? `/${payload.endpoint}` : ""}`;
+    const query = payload.query ? `?${Object.entries(payload.query).map(([key, value]) => `${key}=${value}`).join("&")}` : "";
+
+    const body = payload.noBody ? undefined : JSON.stringify(Object.assign(payload.body ?? {}, payload.nonce ? { nonce: this.getNonce() } : {}));
+    const headers = !payload.headers && payload.noDefaultHeaders ? undefined : Object.assign(payload.noDefaultHeaders ? {} : this.getHeader(), payload.headers ?? {});
+    
+    const req = await fetch(encodeURI(url + query), {
+      method: payload.method ?? "POST",
+      body,
+      headers,
+    });
+
+    // handle ratelimit
+    if (req.status === 429) {
+      const response = await req.json() as RateLimitResponse;
+      if (response.global) {
+        this._globalLimitBuckets.push(bucket);
+        this._globalLimit = response.retry_after * 1000;
+      }
+
+      setTimeout(this.exec.bind(this, bucket), response.retry_after * 1000);
+      console.warn(response.message);
+      return;
+    }
+
+    if (this._globalLimitBuckets.includes(bucket)) this._globalLimitBuckets.splice(this._globalLimitBuckets.indexOf(bucket), 1);
     this._buckets[bucket].splice(1, 1);
     if (this._buckets[bucket].length > 1) await this.exec(bucket);
+
+    // handle response
+    try {
+      entry[req.ok ? 1 : 2](await req.json());
+    } catch (e) {
+      entry[req.ok ? 1 : 2](e);
+    }
   }
 
   public async fetch(bucket: string, payload: Payload): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!this._buckets[bucket]) this._buckets[bucket] = [0];
       this._buckets[bucket].push([payload, resolve, reject]);
-      if (this._buckets[bucket][0] === 0 && this._buckets[bucket].length === 2) this.exec(bucket);
+      if (this._buckets[bucket][0] !== 0 || this._buckets[bucket].length !== 2) return;
+      
+      if (this._globalLimit === 0) {
+        this.exec(bucket);
+        return;
+      }
+
+      if (this._globalLimitBuckets.includes(bucket)) return;
+      this._globalLimitBuckets.push(bucket);
+      setTimeout(this.exec.bind(this, bucket), this._globalLimit);
     });
   }
 }
@@ -63,4 +111,11 @@ interface Payload {
 
   noBody?: boolean;
   noDefaultHeaders?: boolean;
+}
+
+interface RateLimitResponse {
+  code: number;
+  global: boolean;
+  message: string;
+  retry_after: number;
 }

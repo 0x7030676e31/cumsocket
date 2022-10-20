@@ -14,14 +14,14 @@ export default class Core extends Handler {
 
   public static listen(...events: string[]) {
     return (target: Object, _: string | symbol, descriptor: PropertyDescriptor) => {
-      Core._listeners.push([target, descriptor.value, ...events]);
+      Core._listeners.push([target, descriptor.value, ...events.map(v => v.toLowerCase())]);
       return descriptor;
     }
   }
 
   // handle an incoming message payload
   private async dispatch(data: any, event: string): Promise<void> {
-    this._eventListeners[event]?.forEach(v => v(data, event));
+    this._eventListeners[event.toLowerCase()]?.forEach(v => v(data, event));
   }
 
   private isClass(v: any): boolean {
