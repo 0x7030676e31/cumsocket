@@ -4,4 +4,3 @@ config();
 
 if (!process.env.token) throw new Error("No token provided");
 new Core(process.env.token!);
-

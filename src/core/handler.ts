@@ -97,4 +97,8 @@ export default class Handler extends EventEmitter {
     this._ws?.removeAllListeners();
     this._ws?.close();
   }
+  
+  // protected log(msg: string): void {
+  //   console.log(`\x1b[35m[${new Date().toUTCString()}] \x1b[36m${msg}\x1b[0m`);
+  // }
 }
