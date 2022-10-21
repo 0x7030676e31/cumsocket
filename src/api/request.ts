@@ -31,10 +31,10 @@ class Api {
     return Object.assign(structuredClone(this._headers), { Authorization: process.env.token! });
   }
 
-  // generate nonce (for message confirmation) TOFIX
-  // private getNonce(): string {  
-  //   return ((new Date().getTime() - 1420070400000) << 22).toString();
-  // }
+  // generate nonce (for message confirmation)
+  private getNonce(): string {  
+    return ((BigInt(new Date().getTime()) - 1420070400000n) << 22n).toString();
+  }
 
   // execute the request (all networking stuff)
   private async exec(bucket: string) {
@@ -45,7 +45,7 @@ class Api {
     const url = `${this._api}${Object.entries(payload.path).map(([key, value]) => `/${key}/${value}`).join("")}${payload.endpoint ? `/${payload.endpoint}` : ""}`;
     const query = payload.query ? `?${Object.entries(payload.query).map(([key, value]) => `${key}=${value}`).join("&")}` : "";
 
-    const body = payload.noBody ? undefined : JSON.stringify(Object.assign(payload.body ?? {}, payload.nonce ? { nonce: /* this.getNonce() */ 0 } : {}));
+    const body = payload.noBody ? undefined : JSON.stringify(Object.assign(payload.body ?? {}, payload.nonce ? { nonce: this.getNonce() } : {}));
     const headers = !payload.headers && payload.noDefaultHeaders ? undefined : Object.assign(payload.noDefaultHeaders ? {} : this.getHeader(), payload.headers ?? {});
     
     // fetch data
@@ -108,7 +108,7 @@ export default new Api();
 interface Payload {
   path: { [key: string]: string };
   endpoint?: string;
-  query?: { [key: string]: string };
+  query?: { [key: string]: any };
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   body?: { [key: string]: any } | any;
   headers?: { [key: string]: any } | any;

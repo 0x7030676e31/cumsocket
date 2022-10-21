@@ -1,3 +1,4 @@
 # TODO
-- Permission system (still model is todo)
-- Sql databse?
+- Permission system (model is still todo)
+- Sql databse
+- Link perms with db
