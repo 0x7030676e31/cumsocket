@@ -1,3 +1,4 @@
+import Permissions from "./perms";
 import Handler from "./handler";
 import fs from "fs";
 
@@ -5,6 +6,8 @@ export default class Core extends Handler {
   // [Module class, callback, events to listen to]
   private static _listeners: [Object, (data: any, events: string) => Promise<void> | void, ...string[]][] = [];
   private _eventListeners: { [key: string]: ((data: any, events: string) => Promise<void> | void)[] } = {};
+  private _ids: string[] = [];
+  private _perms!: Permissions;
 
   constructor(token: string) {
     super(token);
@@ -37,6 +40,7 @@ export default class Core extends Handler {
       .filter(v => v.endsWith(".js"))
       .map(v => require(`../${dir}/${v}`).default)
       .filter(v => this.isClass(v))
+      .concat([ require("./perms").default ])
       .map<Module>(v => Object.assign(new v(this), { ctx: this }))
       .filter(v => {
         // check if the module has a correct id and if all env variables are set
@@ -48,15 +52,22 @@ export default class Core extends Handler {
         return true;
       });
 
+    modules.forEach(v => this._ids.push(v.id) && console.log("Loaded module", v.id));
+    this._perms = modules.at(-1) as Permissions;
+
     // load listeners and bind them to the modules
     Core._listeners.forEach(([target, callback, ...events]) => {
-      const ctx = modules.find(v => v.isPrototypeOf(target));
-      events.forEach(v => {
+      const ctx = modules.find(v => target.isPrototypeOf(v));
+      events.forEach(v  => {
         if (!this._eventListeners[v]) this._eventListeners[v] = [];
         if (ctx) this._eventListeners[v].push(callback.bind(ctx));
         else this._eventListeners[v].push(callback);
       });
     });
+  }
+
+  public get ids(): string[] {
+    return structuredClone(this._ids);
   }
 }
 

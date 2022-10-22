@@ -4,6 +4,7 @@ import { Embed } from "./embeds";
 export interface Message {
   id: string;
   type: number;
+  channel_id: string;
   content: string;
   author: Author;
   attachments: Attachment[];

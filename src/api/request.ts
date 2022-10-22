@@ -73,11 +73,13 @@ class Api {
     this._buckets[bucket].splice(1, 1);
     if (this._buckets[bucket].length > 1) await this.exec(bucket);
 
-    // handle response
+    // handle response (temp solution)
     try {
-      entry[req.ok ? 1 : 2](await req.json());
+      // entry[req.ok ? 1 : 2](await req.json());
+      entry[1](await req.json());
     } catch (e) {
-      entry[req.ok ? 1 : 2](e);
+      // entry[req.ok ? 1 : 2](e);
+      entry[1](e)
     }
   }
 
