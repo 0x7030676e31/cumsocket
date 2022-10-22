@@ -15,6 +15,7 @@ export default class Core extends Handler {
     this.loadModules("modules");
   }
 
+  // (decorator) register a listener
   public static listen(...events: string[]) {
     return (target: Object, _: string | symbol, descriptor: PropertyDescriptor) => {
       Core._listeners.push([target, descriptor.value, ...events.map(v => v.toLowerCase())]);
@@ -27,6 +28,7 @@ export default class Core extends Handler {
     this._eventListeners[event.toLowerCase()]?.forEach(v => v(data, event));
   }
 
+  // check if object is a class constructor
   private isClass(v: any): boolean {
     return Boolean(v && typeof v === "function" && v.prototype && !Object.getOwnPropertyDescriptor(v, 'prototype')?.writable);
   }
@@ -52,6 +54,7 @@ export default class Core extends Handler {
         return true;
       });
 
+    // add ids to list
     modules.forEach(v => this._ids.push(v.id) && console.log("Loaded module", v.id));
     this._perms = modules.at(-1) as Permissions;
 

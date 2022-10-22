@@ -1,4 +1,5 @@
 .vscode/
+.VSCodeCounter/
 build/
 node_modules/
 
