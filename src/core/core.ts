@@ -25,6 +25,7 @@ export default class Core extends Handler {
 
   // handle an incoming message payload
   private async dispatch(data: any, event: string): Promise<void> {
+    // TODO: rewrite this to use perms module
     this._eventListeners[event.toLowerCase()]?.forEach(v => v(data, event));
   }
 
@@ -37,7 +38,7 @@ export default class Core extends Handler {
   private loadModules(dir: string): void {
     if (!fs.existsSync(`build/${dir}`)) throw new Error(`Directory ${dir} does not exist`);
 
-    const modules = 
+    const modules =
       fs.readdirSync(`build/${dir}`)
       .filter(v => v.endsWith(".js"))
       .map(v => require(`../${dir}/${v}`).default)
@@ -67,6 +68,9 @@ export default class Core extends Handler {
         else this._eventListeners[v].push(callback);
       });
     });
+
+    // call "ready" event
+    modules.forEach(v => v.ready?.(this));
   }
 
   public get ids(): string[] {
@@ -79,4 +83,5 @@ interface Module {
   id: string;
   env?: string[];
   ignore?: boolean;
+  ready?: (ctx: Core) => Promise<void> | void;
 }

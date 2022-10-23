@@ -88,14 +88,14 @@ class Lexer {
 
   private match(): [string, RegExpExecArray] | null {
     let str = this._content.slice(this._cursor);
-    
+
     // remove whitespaces at the beginning
     const spaces = /^\s+/.exec(str);
     if (spaces) {
       this._cursor += spaces[0].length;
       str = this._content.slice(this._cursor);
     }
-    
+
     // look for first matching rule
     for (const [type, regex] of this._rules) {
       const match = regex.exec(str);
@@ -104,7 +104,7 @@ class Lexer {
       this._cursor += match[0].length;
       return [type, match];
     }
-    
+
     return null;
   }
 
@@ -115,7 +115,7 @@ class Lexer {
 
 type vars = { guild: string, channel: string, user: string };
 class Expression {
-  private readonly _tokens: exprTokens;
+  private readonly _tokens: tokens;
   private _vars!: vars;
 
   private readonly _order: string[][] = [
@@ -132,13 +132,13 @@ class Expression {
     while (true) {
       const idx = tokens.findIndex(v => v instanceof Array);
       if (idx === -1) break;
-    
+
       const result = this._exec(tokens[idx] as exprTokens);
       if (result === null) return null;
       tokens.splice(idx, 1, result);
     }
 
-    // replace all "guild", "channel" etc vars to ids 
+    // replace all "guild", "channel" etc vars to ids
     const rTokens = (tokens as exprToken[]).map(v => v.type === "var" ? { type: "id", value: this._vars[v.value as keyof vars] } : v) as rTokens;
 
     // make operations on values
@@ -180,20 +180,31 @@ class Expression {
 
       if (!passed) break;
     }
-    
+
     return rTokens[0];
-  } 
+  }
 
   public exec(vars: { channel: string, user: string, guild?: string }): boolean {
     this._vars = { guild: vars.guild || "0", channel: vars.channel, user: vars.user };
     return this._exec(structuredClone(this._tokens)) !== null;
   }
+
+  private _stringify(tokens: tokens): string {
+    return tokens.map(v => v instanceof Array ? `(${this._stringify(v)})` : v.value).join(" ");
+  }
+
+  public stringify(): string {
+    return this._stringify(structuredClone(this._tokens));
+  }
+
+  public copy(): Expression {
+    return new Expression(structuredClone(this._tokens));
+  }
 }
 
-const PATTERN = /^[?!$]\s*perms\s+(?<id>[a-z]+)\s+(?<method>list$|add\s+(?<add_state>allow|block)\s+(~(?<add_priority>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+$)|remove\s+|edit\s+)/;
+const PATTERN = /^[?!$]\s*perms\s+(?<id>[a-z]+)\s+(?<method>list|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_priority>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|remove\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))$/;
 
-type perms = { [key: string]: [state, ...exprSet[]] };
-type exprSet = [state, number, Expression];
+type perms = { [key: string]: { state: state, rules: { state: state, prior: number, expr: Expression, temp?: true }[] } };
 type state = "allow" | "block";
 export default class Permissions {
   public id = "permissions";
@@ -203,21 +214,23 @@ export default class Permissions {
   private _last: [string, string] = ["", ""];
 
   constructor() {
-    this._perms["test"] = ["allow", 
-      ["allow", 2, new Expression(new Lexer("1 == 1").tokens as tokens)],
-      ["allow", 4, new Expression(new Lexer("1 == 1").tokens as tokens)],
-      ["allow", 1, new Expression(new Lexer("1 == 1").tokens as tokens)],
-      ["allow", 7, new Expression(new Lexer("1 == 1").tokens as tokens)],
-    ];
-
-    const sorted = (this._perms["test"].slice(1) as exprSet[]).sort((a, b) => +(a[1] - b[1])).reverse();
-    console.log(sorted)
+    // TODO: load from db
+    this._perms["test"] = {
+      state: "allow",
+      rules: [
+        { state: "allow", prior: 4, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
+        { state: "allow", prior: 3, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
+        { state: "allow", prior: 2, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
+        { state: "allow", prior: 1, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
+        { state: "allow", prior: 0, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
+      ]
+    }
   }
 
   @Core.listen("MESSAGE_CREATE")
   public async onMessage(msg: types.messages.Message): Promise<void> {
     // check if message is a command
-    const match = PATTERN.exec(msg.content);
+    const match = PATTERN.exec(msg.content.toLowerCase());
     if (!match) return;
 
     this._last = [msg.channel_id, msg.id];
@@ -229,23 +242,95 @@ export default class Permissions {
       this.response("Invalid id");
       return;
     }
-    
+
+    if (["list", "remove", "cleanup", "move"].includes(method) && !this._perms[id]) {
+      this.response("There are no rules for this id");
+      return;
+    }
+
     // do stuff depending on method
+    const rules = this._perms[id]?.rules;
     switch (method) {
+      // display all rules
+      case "list":
+        const spaces = Math.max(...rules.map(v => v.prior)).toString().length;
+        const list = rules.map(v => `${v.prior}.${" ".repeat(spaces - v.prior.toString().length)} [${v.state}] ${v.expr.stringify()}`);
+        this.response(`Current state: **${this._perms[id].state}**\`\`\`\n${list.join("\n")}\n\`\`\``);
+        break;
+
+      // add a rule
       case "add":
-        const priorities = this._perms[id]?.slice(1).map<number>(v => v[1] as number) || [];
+        const priorities = rules?.map(v => v.prior) || [];
         const priority = +(match.groups!.add_priority ?? Math.max(-1, ...priorities) + 1);
-        // check if priority is not taken
-        if (priorities.includes(priority)) {
-          this.response("Priority already exists");
-          return;
-        }
-        const response = this.add(id, match.groups!.add_state as state, priority, match.groups!.add_expr);
-        if (typeof response === "string") this.response(response);
+
+        const response = this.add(id, (match.groups!.add_state?.trim() ?? "allow") as state, priority, match.groups!.add_expr);
+        // this.response(response ?? "Done!");
         return;
 
-      default:
-        this.response("Not supported yet");
+      // remove set of rules
+      case "remove":
+        const range = match.groups!.remove_range;
+        let len: number = 0;
+        if (range === "all") {
+          len = rules.length || 0;
+          this._perms[id].rules = [];
+        } else if (/^\d+$/.test(range)) {
+          const idx = rules.findIndex(v => v.prior === +range);
+          if (idx !== -1) len = rules.splice(idx, 1).length;
+        } else {
+          const start = +range.split("..")[0] || -Infinity;
+          const end = +range.split("..")[1] || Infinity;
+          const originalLength = rules.length;
+          this._perms[id].rules = rules.filter(v => v.prior < start || v.prior > end);
+          len = originalLength - rules.length;
+        }
+
+        this.response(len === 0 ? "No rules were removed" : `Removed ${len} rules`);
+        break;
+
+      // reorder rules
+      case "cleanup":
+        this._perms[id].rules = rules.map((v, i) => Object.assign(v, { prior: rules.length - i + 1 }));
+        this.response("Done!");
+        break;
+
+      // change state of id or entire ruleset
+      case "state":
+        const prior = +match.groups!.state_prior;
+        const state = match.groups!.state as state;
+        if (isNaN(prior)) {
+          if (this._perms[id]) this._perms[id].state = state;
+          else this._perms[id] = { state: state, rules: [] };
+          return;
+        }
+
+        if (!this._perms[id] || !rules.length || !rules.some(v => v.prior === +prior)) {
+          this.response("There are no rules for this priority");
+          return;
+        }
+
+        rules.find(v => v.prior === +prior)!.state = state;
+        this.response("Done!");
+        break;
+
+      // move rule from one priority to another
+      case "move":
+        const from = +match.groups!.move_from;
+        const to = +match.groups!.move_to;
+
+        if (!rules.some(v => v.prior === from)) {
+          this.response("There are no rules for this priority");
+          return;
+        }
+
+        // move rule
+        const target = rules.find(v => v.prior === from)!;
+        target.temp = true;
+        this.insert(id, target.state, to, target.expr.copy()  );
+        rules.splice(rules.findIndex(v => v.temp), 1);
+        
+        this.response("Done!");
+        break;
     }
   }
 
@@ -262,24 +347,31 @@ export default class Permissions {
   }
 
   // add permission to id
-  private add(id: string, state: state, priority: number, expr: string): void | string {
-    const tokens = new Lexer(expr).tokens;
+  private add(id: string, state: state, prior: number, expression: string): void | string {
+    const tokens = new Lexer(expression).tokens;
     if (typeof tokens === "string") return tokens;
 
-    const expression = new Expression(tokens);
-    if (!this._perms[id]) this._perms[id] = ["allow"];
-    this._perms[id].push([state, priority, expression]);
+    const expr = new Expression(tokens);
+    if (!this._perms[id]) this._perms[id] = { state: "allow", rules: [] };
 
-    this.resort();
+    this.insert(id, state, prior, expr);
   }
 
-  // resort permissions by priority
-  private resort(): void {
-    Object.entries(this._perms).forEach(([key, entry]) => {
-      const state = [0];
-      const sorted = (entry.slice(1) as exprSet[]).sort((a, b) => +(a[1] - b[1])).reverse();
-      this._perms[key] = [entry[0], ...sorted];
-    });
+  // insert rule into array
+  private insert(id: string, state: state, prior: number, expr: Expression): void {
+    // get reference to rules array
+    const rules = this._perms[id].rules;
+
+    // check if priority is already taken and shift priorities if it is
+    const idx = rules.findIndex(v => v.prior === prior);
+    if (idx === -1) {
+      const newIdx = rules.findIndex(v => prior > v.prior);
+      rules.splice(newIdx === -1 ? rules.length : newIdx, 0, { state, prior, expr });
+      return;
+    }
+
+    rules.splice(idx, 0, { state, prior, expr });
+    this._perms[id].rules = rules.map((v, i) => Object.assign(v, { prior: i > idx ? v.prior : v.prior + 1 }));
   }
 
   // Process event and execute callback if all conditions are met
@@ -311,12 +403,12 @@ export default class Permissions {
 
     // check if any expression is true
     const perms = this._perms[id];
-    const allow = perms[0] === "allow";
-    for (const perm of (perms.slice(1) as exprSet[])) {
-      const passed = perm[2].exec({ guild, channel, user });
+    const allow = perms.state === "allow";
+    for (const rule of perms.rules) {
+      const passed = rule.expr.exec({ guild, channel, user });
       if (!passed) continue;
 
-      if (perm[0] === "allow") callback(payload, event);
+      if (rule.state === "allow") callback(payload, event);
       return;
     }
 

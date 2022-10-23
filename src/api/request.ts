@@ -32,7 +32,7 @@ class Api {
   }
 
   // generate nonce (for message confirmation)
-  private getNonce(): string {  
+  private getNonce(): string {
     return ((BigInt(new Date().getTime()) - 1420070400000n) << 22n).toString();
   }
 
@@ -47,7 +47,7 @@ class Api {
 
     const body = payload.noBody ? undefined : JSON.stringify(Object.assign(payload.body ?? {}, payload.nonce ? { nonce: this.getNonce() } : {}));
     const headers = !payload.headers && payload.noDefaultHeaders ? undefined : Object.assign(payload.noDefaultHeaders ? {} : this.getHeader(), payload.headers ?? {});
-    
+
     // fetch data
     const req = await fetch(encodeURI(url + query), {
       method: payload.method ?? "POST",
@@ -90,7 +90,7 @@ class Api {
       if (!this._buckets[bucket]) this._buckets[bucket] = [0];
       this._buckets[bucket].push([payload, resolve, reject]);
       if (this._buckets[bucket][0] !== 0 || this._buckets[bucket].length !== 2) return;
-      
+
       // check if global ratelimit is active
       if (this._globalLimit === 0) {
         this.exec(bucket);

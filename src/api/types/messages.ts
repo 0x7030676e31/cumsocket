@@ -28,7 +28,7 @@ export interface Attachment {
 
 export interface Component {
 
-} 
+}
 
 export interface SendPayload {
   content?: string;

@@ -29,7 +29,7 @@ export default class Handler extends EventEmitter {
         if (t === "READY") this._sessionId = d?.session_id;
         this.emit("dispatch", d, t!);
         break;
-    
+
       // client should send a heartbeat rn
       case 1:
         this.heartbeat();
@@ -57,7 +57,7 @@ export default class Handler extends EventEmitter {
     this.emit("heartbeat", this._seq);
     this._ws?.send(JSON.stringify({ op: 1, d: this._seq }));
   }
-  
+
   private async onClose(code: number): Promise<void> {
     console.log(`Exiting: ${code}`);
     process.exit(code);
@@ -97,7 +97,7 @@ export default class Handler extends EventEmitter {
     this._ws?.removeAllListeners();
     this._ws?.close();
   }
-  
+
   // protected log(msg: string): void {
   //   console.log(`\x1b[35m[${new Date().toUTCString()}] \x1b[36m${msg}\x1b[0m`);
   // }
