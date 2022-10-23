@@ -1,6 +1,7 @@
 import Core from "./core";
 import * as types from "../api/types";
 import api from "../api";
+import zlib from "zlib";
 
 type exprTokens = (exprToken | exprTokens)[];
 type exprToken = token | { type: "bool", value: boolean };
@@ -44,6 +45,10 @@ class Lexer {
         case "var":
         case "op":
         case "id":
+          if (type === "id" && (matchArr[0].length > 20 || BigInt(matchArr[0]) > 18446744073709551615n) ) {
+            this._error = "Id has to be 20 characters or less and has to be less than 18446744073709551615";
+          }
+
           if ((type === "op" && this._last === "op") || (type !== "op" && this._last === "var")) {
             this._error = `Unexpected token "${type}" after "${this._last}" at ${this._cursor}`;
             return;
@@ -115,6 +120,7 @@ class Lexer {
 
 type vars = { guild: string, channel: string, user: string };
 class Expression {
+    private static readonly _table: string[] = ["guild", "channel", "user", "&&", "||", "==", "!=", "(", ")"];
   private readonly _tokens: tokens;
   private _vars!: vars;
 
@@ -189,20 +195,57 @@ class Expression {
     return this._exec(structuredClone(this._tokens)) !== null;
   }
 
-  private _stringify(tokens: tokens): string {
-    return tokens.map(v => v instanceof Array ? `(${this._stringify(v)})` : v.value).join(" ");
+  private _stringify(tokens: tokens, spaces: boolean): string {
+    return tokens.map(v => v instanceof Array ? `(${this._stringify(v, spaces)})` : v.value).join(spaces ? " " : "");
   }
 
-  public stringify(): string {
-    return this._stringify(structuredClone(this._tokens));
+  public stringify(spaces: boolean = true): string {
+    return this._stringify(structuredClone(this._tokens), spaces);
   }
 
   public copy(): Expression {
     return new Expression(structuredClone(this._tokens));
   }
+
+  // encode expression to string so it can be stored in database as string
+  public encode(): string {
+    const buff: number[] = [];
+    let text: string = this.stringify(false);
+
+    // convert 64bit number to 8 hex numbers
+    const conv = (num: BigInt) => num.toString(2).match(/[01]{1,8}/g)!.map(v => +`0b${v}`).concat(Array(Math.floor((64 - num.toString(2).length) / 8)).fill(0));
+
+    while (text.length) {
+      const match = /^(guild|channel|user|&&|\|\||==|!=|\(|\)|\d+)/.exec(text)![0];
+      const idx = Expression._table.indexOf(match);
+      if (idx === -1) buff.push(9, ...conv(BigInt(match)));
+      else buff.push(idx);
+      text = text.slice(match.length);
+    }
+
+    return buff.map(v => String.fromCharCode(v + 1)).join("");
+  }
+
+  public static decode(str: string): Expression {
+    const buff: number[] = str.split("").map(v => v.charCodeAt(0) - 1);
+    let text: string = "";
+
+    while (buff.length) {
+      const prefix = buff.shift()!;
+      if (prefix !== 9) {
+        text += Expression._table[prefix];
+        continue;
+      }
+      
+      const num = buff.splice(0, 8);
+      text += BigInt(`0b${num.map(v => num.toString()).join("")}`).toString();
+    }
+
+    return new Expression(new Lexer(text).tokens as tokens);
+  }
 }
 
-const PATTERN = /^[?!$]\s*perms\s+(?<id>[a-z]+)\s+(?<method>list|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_priority>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|remove\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))$/;
+const PATTERN = /^[?!$]\s*perms\s+(?<id>[a-z]{1,16})\s+(?<method>list|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_priority>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|remove\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>allow|block)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))$/;
 
 type perms = { [key: string]: { state: state, rules: { state: state, prior: number, expr: Expression, temp?: true }[] } };
 type state = "allow" | "block";
@@ -213,18 +256,9 @@ export default class Permissions {
   private _perms: perms = {};
   private _last: [string, string] = ["", ""];
 
-  constructor() {
-    // TODO: load from db
-    this._perms["test"] = {
-      state: "allow",
-      rules: [
-        { state: "allow", prior: 4, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
-        { state: "allow", prior: 3, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
-        { state: "allow", prior: 2, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
-        { state: "allow", prior: 1, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
-        { state: "allow", prior: 0, expr: new Expression(new Lexer("guild == 123").tokens as tokens) },
-      ]
-    }
+  public async init(ctx: Core): Promise<void> {
+    // await ctx.dbQuery("CREATE TABLE IF NOT EXISTS permissions (id varchar(16), state boolean, priority smallint, expr: text);");
+    // const data = (await ctx.dbQuery("SELECT * FROM permissions ORDER BY priority DESC;")).fields;
   }
 
   @Core.listen("MESSAGE_CREATE")
@@ -243,8 +277,15 @@ export default class Permissions {
       return;
     }
 
+    // check if field exists
     if (["list", "remove", "cleanup", "move"].includes(method) && !this._perms[id]) {
       this.response("There are no rules for this id");
+      return;
+    }
+
+    // check if priority is smallint
+    if (+match.groups!.add_priority > 32767 || +match.groups!.move_to > 32767) {
+      this.response("Priority is too big, must be less than 32768");
       return;
     }
 
@@ -262,7 +303,6 @@ export default class Permissions {
       case "add":
         const priorities = rules?.map(v => v.prior) || [];
         const priority = +(match.groups!.add_priority ?? Math.max(-1, ...priorities) + 1);
-
         const response = this.add(id, (match.groups!.add_state?.trim() ?? "allow") as state, priority, match.groups!.add_expr);
         // this.response(response ?? "Done!");
         return;
@@ -271,6 +311,7 @@ export default class Permissions {
       case "remove":
         const range = match.groups!.remove_range;
         let len: number = 0;
+        // do "range" stuff
         if (range === "all") {
           len = rules.length || 0;
           this._perms[id].rules = [];
@@ -328,7 +369,7 @@ export default class Permissions {
         target.temp = true;
         this.insert(id, target.state, to, target.expr.copy()  );
         rules.splice(rules.findIndex(v => v.temp), 1);
-        
+
         this.response("Done!");
         break;
     }

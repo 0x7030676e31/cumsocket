@@ -4,7 +4,8 @@
   "description": "Module based selfbot for Discord",
   "main": "build/index.js",
   "scripts": {
-    "test": "rm -fr build && tsc && clear && node ."
+    "test": "rm -fr build && tsc && clear && node .",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -28,5 +29,8 @@
     "@types/node-fetch": "^2.6.2",
     "@types/pg": "^8.6.5",
     "@types/ws": "^8.5.3"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }

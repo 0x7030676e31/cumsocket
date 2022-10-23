@@ -1,6 +1,8 @@
 import Permissions from "./perms";
+import DataBase from "./database";
 import Handler from "./handler";
 import fs from "fs";
+import { QueryResult } from "pg";
 
 export default class Core extends Handler {
   // [Module class, callback, events to listen to]
@@ -8,9 +10,13 @@ export default class Core extends Handler {
   private _eventListeners: { [key: string]: ((data: any, events: string) => Promise<void> | void)[] } = {};
   private _ids: string[] = [];
   private _perms!: Permissions;
+  private _db!: DataBase;
 
   constructor(token: string) {
     super(token);
+
+    this._db = new DataBase();
+
     this.on("dispatch", this.dispatch.bind(this));
     this.loadModules("modules");
   }
@@ -48,7 +54,7 @@ export default class Core extends Handler {
       .filter(v => {
         // check if the module has a correct id and if all env variables are set
         if (v.ignore === true) return false;
-        if (!v.id && typeof v.id !== "string") throw new Error(`Module ${v.constructor.name} does not have a valid id`);
+        if (!v.id && typeof v.id !== "string" && !/^[a-zA-Z]{1,16}$/.test(v.id)) throw new Error(`Module ${v.constructor.name} does not have a valid id`);
         v.env?.forEach(v => {
           if (!process.env[v]) throw new Error(`Module ${v.constructor.name} requires environment variable ${v}`);
         });
@@ -70,7 +76,11 @@ export default class Core extends Handler {
     });
 
     // call "ready" event
-    modules.forEach(v => v.ready?.(this));
+    modules.forEach(v => v.init?.(this));
+  }
+
+  public async dbQuery(query: string): Promise<QueryResult<any>> {
+    return await this._db.query(query);
   }
 
   public get ids(): string[] {
@@ -83,5 +93,5 @@ interface Module {
   id: string;
   env?: string[];
   ignore?: boolean;
-  ready?: (ctx: Core) => Promise<void> | void;
+  init?: (ctx: Core) => Promise<void> | void;
 }
