@@ -4,6 +4,7 @@ import { Embed } from "./embeds";
 export interface Message {
   id: string;
   type: number;
+  guild_id?: string;
   channel_id: string;
   content: string;
   author: Author;

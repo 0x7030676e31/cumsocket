@@ -250,8 +250,7 @@ class Expression {
 
 
 
-
-const PATTERN = /^[?!$]\s*perms\s+(?<id>[a-z]{1,16})\s+(?<method>list|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_priority>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|remove\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>allow|block)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))$/;
+const PATTERN = /^[?!$]\s*perms\s+(?<id>[a-z]{1,16})\s+(?<method>list|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_priority>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|(remove|delete)\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>allow|block)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))$/;
 
 type dbMain = { id: number, module: string, state: boolean }[];
 type dbRules = { parent: number, state: boolean, prior: number, expr: string}[];
@@ -262,7 +261,7 @@ export default class Permissions {
   public ctx!: Core;
 
   private _perms: perms = {};
-  private _last: [string, string] = ["", ""];
+  private _last: [string, string, string] = ["", "", ""];
   private _dict: { [key: number]: string } = {};
 
   public async init(ctx: Core): Promise<void> {
@@ -299,7 +298,7 @@ export default class Permissions {
     const match = PATTERN.exec(msg.content.toLowerCase());
     if (!match) return;
 
-    this._last = [msg.channel_id, msg.id];
+    this._last = [msg.channel_id, msg.id, msg.guild_id ?? "-1"];
 
     const id = match.groups!.id;
     const method = match.groups!.method.split(/\s+/)[0];
@@ -343,6 +342,7 @@ export default class Permissions {
 
       // remove set of rules
       case "remove":
+      case "delete":
         const range = match.groups!.remove_range;
         let len: number = 0;
         // do "range" stuff
@@ -372,8 +372,8 @@ export default class Permissions {
 
       // reorder rules
       case "cleanup":
-        this._perms[id].rules = rules.map((v, i) => Object.assign(v, { prior: rules.length - i + 1 }));
-        this.ctx.dbQuery(`WITH updateData AS (SELECT prior AS tmp, ROW_NUMBER() OVER (ORDER BY prior) rn FROM permsRules WHERE parent = ${moduleId}) UPDATE permsRules SET prior = rn FROM updateData WHERE tmp = prior AND parent = ${moduleId};`);
+        this._perms[id].rules = rules.map((v, i) => Object.assign(v, { prior: rules.length - i }));
+        this.ctx.dbQuery(`WITH updateData AS (SELECT prior AS tmp, ROW_NUMBER() OVER (ORDER BY prior) rn - 1 FROM permsRules WHERE parent = ${moduleId}) UPDATE permsRules SET prior = rn FROM updateData WHERE tmp = prior AND parent = ${moduleId};`);
         this.response("Done!");
         break;
 
@@ -385,6 +385,7 @@ export default class Permissions {
           if (this._perms[id]) this._perms[id].state = state;
           else this._perms[id] = { state: state, rules: [] };
           this.ctx.dbQuery(`UPDATE permsMain SET state = ${state === "allow"} WHERE id = ${moduleId};`);
+          this.response("Done!");
           return;
         }
 
@@ -434,7 +435,7 @@ export default class Permissions {
 
   // add permission to id
   private async add(id: string, state: state, prior: number, expression: string): Promise<void | string> {
-    const tokens = new Lexer(expression).tokens;
+    const tokens = new Lexer(expression.replaceAll("cthis", this._last[0]).replaceAll("uthis", this._last[1]).replaceAll("gthis", this._last[2])).tokens;
     if (typeof tokens === "string") return tokens;
 
     const expr = new Expression(tokens);
@@ -484,6 +485,8 @@ export default class Permissions {
         channel = payload.channel_id;
         user = payload.author.id;
         break;
+
+      // I will add more events later
 
       default:
         console.log(`Executing callback for ${event} event without permissions for id ${id}, not supported yet`);
