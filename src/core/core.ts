@@ -1,22 +1,19 @@
+import { Client, QueryResult } from "pg";
 import Permissions from "./perms";
-import DataBase from "./database";
 import Handler from "./handler";
 import fs from "fs";
-import { QueryResult } from "pg";
 
 export default class Core extends Handler {
   // [Module class, callback, events to listen to]
   private static _listeners: [Object, (data: any, events: string) => Promise<void> | void, ...string[]][] = [];
-  private _eventListeners: { [key: string]: ((data: any, events: string) => Promise<void> | void)[] } = {};
+  private _eventListeners: { [key: string]: [string, ((data: any, events: string) => Promise<void> | void)][] } = {};
   private _ids: string[] = [];
   private _perms!: Permissions;
-  private _db!: DataBase;
+  private _db!: Client;
 
   constructor(token: string) {
     super(token);
-
-    this._db = new DataBase();
-
+    this.loadDB();
     this.on("dispatch", this.dispatch.bind(this));
     this.loadModules("modules");
   }
@@ -24,15 +21,21 @@ export default class Core extends Handler {
   // (decorator) register a listener
   public static listen(...events: string[]) {
     return (target: Object, _: string | symbol, descriptor: PropertyDescriptor) => {
-      Core._listeners.push([target, descriptor.value, ...events.map(v => v.toLowerCase())]);
+      Core._listeners.push([target, descriptor.value, ...events.map(v => v.toUpperCase())]);
       return descriptor;
     }
   }
 
+  // connect to the database
+  private loadDB(): void {
+    if (!process.env.DATABASE_URL) throw new Error("Cannot connect to database: DATABASE_URL is not set");
+    this._db = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+    this._db.connect();
+  }
+
   // handle an incoming message payload
   private async dispatch(data: any, event: string): Promise<void> {
-    // TODO: rewrite this to use perms module
-    this._eventListeners[event.toLowerCase()]?.forEach(v => v(data, event));
+    this._eventListeners[event]?.forEach(v => this._perms.process(...v, data, event));
   }
 
   // check if object is a class constructor
@@ -70,8 +73,7 @@ export default class Core extends Handler {
       const ctx = modules.find(v => target.isPrototypeOf(v));
       events.forEach(v  => {
         if (!this._eventListeners[v]) this._eventListeners[v] = [];
-        if (ctx) this._eventListeners[v].push(callback.bind(ctx));
-        else this._eventListeners[v].push(callback);
+        if (ctx) this._eventListeners[v].push([ctx.id, callback.bind(ctx)]);
       });
     });
 
