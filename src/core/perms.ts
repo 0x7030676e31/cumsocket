@@ -1,7 +1,6 @@
 import Core from "./core";
 import * as types from "../api/types";
 import api from "../api";
-import zlib from "zlib";
 
 type exprTokens = (exprToken | exprTokens)[];
 type exprToken = token | { type: "bool", value: boolean };
@@ -118,6 +117,8 @@ class Lexer {
   }
 }
 
+
+
 type vars = { guild: string, channel: string, user: string };
 class Expression {
     private static readonly _table: string[] = ["guild", "channel", "user", "&&", "||", "==", "!=", "(", ")"];
@@ -191,7 +192,7 @@ class Expression {
   }
 
   public exec(vars: { channel: string, user: string, guild?: string }): boolean {
-    this._vars = { guild: vars.guild || "0", channel: vars.channel, user: vars.user };
+    this._vars = { guild: vars.guild || "0", channel: vars.channel || "0", user: vars.user || "0" };
     return this._exec(structuredClone(this._tokens)) !== null;
   }
 
@@ -213,7 +214,7 @@ class Expression {
     let text: string = this.stringify(false);
 
     // convert 64bit number to 8 hex numbers
-    const conv = (num: BigInt) => num.toString(2).match(/[01]{1,8}/g)!.map(v => +`0b${v}`).concat(Array(Math.floor((64 - num.toString(2).length) / 8)).fill(0));
+    const conv = (num: BigInt) => Array(Math.floor((64 - num.toString(2).length) / 8)).fill(0).concat(num.toString(2).match(/[01]{1,8}/g)!.map(v => +`0b${v}`));
 
     while (text.length) {
       const match = /^(guild|channel|user|&&|\|\||==|!=|\(|\)|\d+)/.exec(text)![0];
@@ -226,6 +227,7 @@ class Expression {
     return buff.map(v => String.fromCharCode(v + 1)).join("");
   }
 
+  // decode expression from string
   public static decode(str: string): Expression {
     const buff: number[] = str.split("").map(v => v.charCodeAt(0) - 1);
     let text: string = "";
@@ -238,15 +240,21 @@ class Expression {
       }
       
       const num = buff.splice(0, 8);
-      text += BigInt(`0b${num.map(v => num.toString()).join("")}`).toString();
+      text += BigInt(`0b${num.map(v => Number(v).toString(2)).map(v => `${"0".repeat(8 - v.length)}${v}`).join("")}`).toString();
     }
 
     return new Expression(new Lexer(text).tokens as tokens);
   }
 }
 
+
+
+
+
 const PATTERN = /^[?!$]\s*perms\s+(?<id>[a-z]{1,16})\s+(?<method>list|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_priority>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|remove\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>allow|block)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))$/;
 
+type dbMain = { id: number, module: string, state: boolean }[];
+type dbRules = { parent: number, state: boolean, prior: number, expr: string}[];
 type perms = { [key: string]: { state: state, rules: { state: state, prior: number, expr: Expression, temp?: true }[] } };
 type state = "allow" | "block";
 export default class Permissions {
@@ -255,10 +263,34 @@ export default class Permissions {
 
   private _perms: perms = {};
   private _last: [string, string] = ["", ""];
+  private _dict: { [key: number]: string } = {};
 
   public async init(ctx: Core): Promise<void> {
-    // await ctx.dbQuery("CREATE TABLE IF NOT EXISTS permissions (id varchar(16), state boolean, priority smallint, expr: text);");
-    // const data = (await ctx.dbQuery("SELECT * FROM permissions ORDER BY priority DESC;")).fields;
+    await ctx.dbQuery("CREATE TABLE IF NOT EXISTS permsMain (id serial, module varchar(16), state boolean);");
+    await ctx.dbQuery("CREATE TABLE IF NOT EXISTS permsRules (parent integer, state boolean, prior smallint, expr text);");
+    const main: dbMain = (await ctx.dbQuery("SELECT * FROM permsMain;")).rows;
+    const rules: dbRules = (await ctx.dbQuery("SELECT * FROM permsRules ORDER BY prior DESC;")).rows;
+    
+    // insert missing modules
+    const missing = ctx.ids.filter(id => !main.some(v => v.module === id));
+    if (missing.length) ctx.dbQuery(`INSERT INTO permsMain (module, state) VALUES ${missing.map(v => `('${v}', true)`).join(", ")};`);
+    
+    this._dict = Object.fromEntries(main.map(v => [v.id, v.module]));
+    const max = Math.max(...main.map(v => v.id), 0);
+    missing.forEach((id, i) => {
+      this._perms[id] = { state: "allow", rules: [] };
+      this._dict[max + i + 1] = id;
+    });
+
+
+    // load permissions
+    main.forEach(v => this._perms[v.module] = { state: v.state ? "allow" : "block", rules: [] });
+    rules.forEach(v => {
+      const parent = this._dict[v.parent];
+      this._perms[parent].rules.push({ state: v.state ? "allow" : "block", prior: v.prior, expr: Expression.decode(v.expr) });
+    });
+
+    console.log(`Loaded ${main.length} modules and ${rules.length} rules for permissions module from database.`);
   }
 
   @Core.listen("MESSAGE_CREATE")
@@ -289,6 +321,8 @@ export default class Permissions {
       return;
     }
 
+    const moduleId = Object.entries(this._dict).find(v => v[1] === id)![0];
+
     // do stuff depending on method
     const rules = this._perms[id]?.rules;
     switch (method) {
@@ -303,8 +337,8 @@ export default class Permissions {
       case "add":
         const priorities = rules?.map(v => v.prior) || [];
         const priority = +(match.groups!.add_priority ?? Math.max(-1, ...priorities) + 1);
-        const response = this.add(id, (match.groups!.add_state?.trim() ?? "allow") as state, priority, match.groups!.add_expr);
-        // this.response(response ?? "Done!");
+        const response = await this.add(id, (match.groups!.add_state?.trim() ?? "allow") as state, priority, match.groups!.add_expr);
+        this.response(response ?? "Done!");
         return;
 
       // remove set of rules
@@ -315,15 +349,22 @@ export default class Permissions {
         if (range === "all") {
           len = rules.length || 0;
           this._perms[id].rules = [];
+          this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${moduleId};`);
         } else if (/^\d+$/.test(range)) {
           const idx = rules.findIndex(v => v.prior === +range);
           if (idx !== -1) len = rules.splice(idx, 1).length;
+          this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${moduleId} AND prior = ${range};`);
         } else {
           const start = +range.split("..")[0] || -Infinity;
           const end = +range.split("..")[1] || Infinity;
           const originalLength = rules.length;
           this._perms[id].rules = rules.filter(v => v.prior < start || v.prior > end);
           len = originalLength - rules.length;
+
+          // delete from database
+          if (start === -Infinity) this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${moduleId} AND prior <= ${end};`);
+          else if (end === Infinity) this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${moduleId} AND prior >= ${start};`);
+          else this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${moduleId} AND prior BETWEEN ${start} AND ${end};`);
         }
 
         this.response(len === 0 ? "No rules were removed" : `Removed ${len} rules`);
@@ -332,6 +373,7 @@ export default class Permissions {
       // reorder rules
       case "cleanup":
         this._perms[id].rules = rules.map((v, i) => Object.assign(v, { prior: rules.length - i + 1 }));
+        this.ctx.dbQuery(`WITH updateData AS (SELECT prior AS tmp, ROW_NUMBER() OVER (ORDER BY prior) rn FROM permsRules WHERE parent = ${moduleId}) UPDATE permsRules SET prior = rn FROM updateData WHERE tmp = prior AND parent = ${moduleId};`);
         this.response("Done!");
         break;
 
@@ -342,6 +384,7 @@ export default class Permissions {
         if (isNaN(prior)) {
           if (this._perms[id]) this._perms[id].state = state;
           else this._perms[id] = { state: state, rules: [] };
+          this.ctx.dbQuery(`UPDATE permsMain SET state = ${state === "allow"} WHERE id = ${moduleId};`);
           return;
         }
 
@@ -351,6 +394,7 @@ export default class Permissions {
         }
 
         rules.find(v => v.prior === +prior)!.state = state;
+        this.ctx.dbQuery(`UPDATE permsRules SET state = ${state === "allow"} WHERE parent = ${moduleId} AND prior = ${prior};`);
         this.response("Done!");
         break;
 
@@ -366,8 +410,9 @@ export default class Permissions {
 
         // move rule
         const target = rules.find(v => v.prior === from)!;
+        await this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${moduleId} AND prior = ${from};`);
         target.temp = true;
-        this.insert(id, target.state, to, target.expr.copy()  );
+        this.insert(id, target.state, to, target.expr.copy() );
         rules.splice(rules.findIndex(v => v.temp), 1);
 
         this.response("Done!");
@@ -388,7 +433,7 @@ export default class Permissions {
   }
 
   // add permission to id
-  private add(id: string, state: state, prior: number, expression: string): void | string {
+  private async add(id: string, state: state, prior: number, expression: string): Promise<void | string> {
     const tokens = new Lexer(expression).tokens;
     if (typeof tokens === "string") return tokens;
 
@@ -399,9 +444,12 @@ export default class Permissions {
   }
 
   // insert rule into array
-  private insert(id: string, state: state, prior: number, expr: Expression): void {
+  private async insert(id: string, state: state, prior: number, expr: Expression): Promise<void> {
     // get reference to rules array
     const rules = this._perms[id].rules;
+
+    const moduleId = Object.entries(this._dict).find(v => v[1] === id)![0];
+    await this.ctx.dbQuery(`INSERT INTO permsRules VALUES (${moduleId}, ${state === "allow"}, ${prior}, '${expr.encode()}');`);
 
     // check if priority is already taken and shift priorities if it is
     const idx = rules.findIndex(v => v.prior === prior);
@@ -413,6 +461,7 @@ export default class Permissions {
 
     rules.splice(idx, 0, { state, prior, expr });
     this._perms[id].rules = rules.map((v, i) => Object.assign(v, { prior: i > idx ? v.prior : v.prior + 1 }));
+    this.ctx.dbQuery(`UPDATE permsRules SET priority = priority + 1 WHERE priority >= ${prior} AND module = ${moduleId};`);
   }
 
   // Process event and execute callback if all conditions are met
