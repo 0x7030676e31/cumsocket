@@ -59,3 +59,8 @@ export interface GetQuery {
   after?: string;
   limit?: number;
 }
+
+export interface ReactionQuery {
+  location?: "Message",
+  burst?: boolean;
+}

@@ -98,6 +98,14 @@ export default class Handler extends EventEmitter {
     this._ws?.close();
   }
 
+  public async disconnect(): Promise<void> {
+    // todo
+  }
+
+  public async presenceUpdate(): Promise<void> {
+    // todo 
+  }
+
   // protected log(msg: string): void {
   //   console.log(`\x1b[35m[${new Date().toUTCString()}] \x1b[36m${msg}\x1b[0m`);
   // }
