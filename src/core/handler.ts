@@ -132,6 +132,7 @@ export default class Handler extends EventEmitter {
     const seconds: number = uptime;
     const time = `${hours ? `${hours}h ` : ""}${minutes ? `${minutes}m ` : ""}${seconds}s`;
 
-    console.log(`\x1b[35m(${time}) \x1b[34m[${header}] \x1b[36m${msg}\x1b[0m`);
+    // console.log(`\x1b[35m(${time}) \x1b[34m[${header}] \x1b[36m${msg}\x1b[0m`);
+    console.log(`(${time}) [${header}] ${msg}`);
   }
 }
