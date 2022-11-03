@@ -289,7 +289,7 @@ export default class Permissions {
       this._perms[parent].rules.push({ state: v.state ? "allow" : "block", prior: v.prior, expr: Expression.decode(v.expr) });
     });
 
-    console.log(`Loaded ${main.length} modules and ${rules.length} rules for permissions module from database.`);
+    ctx.log("Permissions", `Loaded ${main.length} modules and ${rules.length} rules for permissions module from database.`);
   }
 
   @Core.listen("MESSAGE_CREATE")
@@ -489,7 +489,7 @@ export default class Permissions {
       // I will add more events later
 
       default:
-        console.log(`Executing callback for ${event} event without permissions for id ${id}, not supported yet`);
+        // console.log(`Executing callback for ${event} event without permissions for id ${id}, not supported yet`);
         callback(payload, event);
         return;
     }

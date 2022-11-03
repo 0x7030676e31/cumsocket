@@ -13,6 +13,10 @@ export default class Handler extends EventEmitter {
   private _seq: number = 0;
   private _sessionId: string = "";
 
+  private readonly _badCodes: number[] = [];
+
+  public readonly initDate: number = Date.now();
+
   constructor(token: string) {
     super();
     this.token = token;
@@ -47,6 +51,7 @@ export default class Handler extends EventEmitter {
 
       // "Hello" message
       case 10:
+        this.log("Gateway", "Discord is saying hello!");
         this._hbInterval = setInterval(this.heartbeat.bind(this), d.heartbeat_interval);
         break;
     }
@@ -58,9 +63,15 @@ export default class Handler extends EventEmitter {
     this._ws?.send(JSON.stringify({ op: 1, d: this._seq }));
   }
 
+  // handle the websocket closing event
   private async onClose(code: number): Promise<void> {
-    console.log(`Exiting: ${code}`);
-    process.exit(code);
+    if (this._badCodes.includes(code)) {
+      this.log("Gateway", `Gateway closed with code ${code}!`);
+      process.exit(1);
+    }
+
+    this.log("Gateway", `Gateway closed with code ${code}! Reconnecting...`);
+    this.connect();
   }
 
   // generate an init payload for creating/resuming a session
@@ -98,15 +109,29 @@ export default class Handler extends EventEmitter {
     this._ws?.close();
   }
 
-  public async disconnect(): Promise<void> {
-    // todo
-  }
-
+  
   public async presenceUpdate(): Promise<void> {
-    // todo 
+    // TODO
   }
 
-  // protected log(msg: string): void {
-  //   console.log(`\x1b[35m[${new Date().toUTCString()}] \x1b[36m${msg}\x1b[0m`);
-  // }
+  public async disconnect(): Promise<void> {
+    this.log("Gateway", "Disconnecting...");
+    this._ws.close(1000);
+    process.exit(0);
+  }
+
+  public log(header: string, msg: string): void {
+    let uptime = (Date.now() - this.initDate) / 1000;
+    
+    const hours: number = Math.floor(uptime / 3600);
+    uptime -= hours * 3600;
+
+    const minutes: number = Math.floor(uptime / 60);
+    uptime -= minutes * 60;
+
+    const seconds: number = uptime;
+    const time = `${hours ? `${hours}h ` : ""}${minutes ? `${minutes}m ` : ""}${seconds}s`;
+
+    console.log(`\x1b[35m(${time}) \x1b[34m[${header}] \x1b[36m${msg}\x1b[0m`);
+  }
 }

@@ -21,6 +21,7 @@ export interface Message {
   nonce?: string | null;
   components: Component[];
   referenced_message?: Message | null;
+  reactions?: Reaction[];
 }
 
 export interface Attachment {
@@ -51,6 +52,20 @@ export interface AllowedMentions {
   roles?: string[];
   users?: string[];
   replied_user?: boolean;
+}
+
+export interface Reaction {
+  emoji: Emoji;
+  count: number;
+  me: boolean;
+  burst_count?: number;
+  burst_colors?: string[];
+  burst_me?: boolean;
+}
+
+interface Emoji {
+  id: string | null;
+  name: string;
 }
 
 export interface GetQuery {
