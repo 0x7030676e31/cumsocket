@@ -25,7 +25,16 @@ export interface Message {
 }
 
 export interface Attachment {
-
+  id: string;
+  filename: string;
+  description?: string;
+  content_type?: string;
+  size: string;
+  url: string;
+  proxy_url: string;
+  height?: number | null;
+  width?: number | null;
+  empheral?: boolean;
 }
 
 export interface Component {

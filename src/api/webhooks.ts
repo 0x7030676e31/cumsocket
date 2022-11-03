@@ -1,5 +1,5 @@
 import Api from "./request";
-import { webhooks } from "./types";
+import { webhooks, messages } from "./types";
 
 export async function create(channel: string, data: webhooks.CreatePayload): Promise<webhooks.Webhook> {
   return await Api.fetch(`channels/${channel}/webhooks`, {
@@ -38,6 +38,7 @@ export async function getWithToken(id: string, token: string): Promise<webhooks.
     path: { webhooks: id },
     endpoint: token,
     noDefaultHeaders: true,
+    headers: { "Content-Type": "application/json" },
   });
 }
 
@@ -55,6 +56,7 @@ export async function editWithToken(id: string, token: string, data: webhooks.Mo
     path: { webhooks: id },
     endpoint: token,
     noDefaultHeaders: true,
+    headers: { "Content-Type": "application/json" },
     body: data,
   });
 }
@@ -72,33 +74,37 @@ export async function removeWithToken(id: string, token: string): Promise<void> 
     path: { webhooks: id },
     endpoint: token,
     noDefaultHeaders: true,
+    headers: { "Content-Type": "application/json" },
   });
 }
 
-export async function execute(id: string, token: string, data: webhooks.ExecutePayload, query?: webhooks.MsgExecuteQuery): Promise<webhooks.ExecutePayload | void> {
+export async function execute(id: string, token: string, data: webhooks.ExecutePayload, query?: webhooks.MsgExecuteQuery): Promise<messages.Message> {
   return await Api.fetch(`webhooks/${id}/${token}`, {
     path: { webhooks: id },
     endpoint: token,
     noDefaultHeaders: true,
+    headers: { "Content-Type": "application/json" },
     body: data,
     ...(query && { query }),
   });
 }
 
-export async function getMessage(id: string, token: string, message: string, query?: webhooks.MsgQuery): Promise<webhooks.ExecutePayload> {
+export async function getMessage(id: string, token: string, message: string, query?: webhooks.MsgQuery): Promise<messages.Message> {
   return await Api.fetch(`webhooks/${id}/${token}/messages/${message}`, {
     method: "GET",
     path: { webhooks: `${id}/${token}`, messages: message },
     noDefaultHeaders: true,
+    headers: { "Content-Type": "application/json" },
     ...(query && { query }),
   });
 }
 
-export async function editMessage(id: string, token: string, message: string, data: webhooks.EditPayload, query?: webhooks.MsgQuery): Promise<webhooks.ExecutePayload> {
+export async function editMessage(id: string, token: string, message: string, data: webhooks.EditPayload, query?: webhooks.MsgQuery): Promise<messages.Message> {
   return await Api.fetch(`webhooks/${id}/${token}/messages/${message}`, {
     method: "PATCH",
     path: { webhooks: `${id}/${token}`, messages: message },
     noDefaultHeaders: true,
+    headers: { "Content-Type": "application/json" },
     body: data,
     ...(query && { query }),
   });
@@ -109,6 +115,7 @@ export async function removeMessage(id: string, token: string, message: string, 
     method: "DELETE",
     path: { webhooks: `${id}/${token}`, messages: message },
     noDefaultHeaders: true,
+    headers: { "Content-Type": "application/json" },
     ...(query && { query }),
   });
 }
