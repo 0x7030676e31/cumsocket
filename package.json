@@ -5,6 +5,7 @@
   "main": "build/index.js",
   "scripts": {
     "test": "rm -fr build && tsc && clear && node .",
+    "postinstall": "npm run build",
     "build": "tsc"
   },
   "repository": {
