@@ -121,7 +121,7 @@ class Lexer {
 
 type vars = { guild: string, channel: string, user: string };
 class Expression {
-    private static readonly _table: string[] = ["guild", "channel", "user", "&&", "||", "==", "!=", "(", ")"];
+  private static readonly _table: string[] = ["guild", "channel", "user", "&&", "||", "==", "!=", "(", ")"];
   private readonly _tokens: tokens;
   private _vars!: vars;
 
@@ -193,7 +193,8 @@ class Expression {
 
   public exec(vars: { channel: string, user: string, guild?: string }): boolean {
     this._vars = { guild: vars.guild || "0", channel: vars.channel || "0", user: vars.user || "0" };
-    return this._exec(structuredClone(this._tokens)) !== null;
+    const result = this._exec(structuredClone(this._tokens));
+    return result === null ? false : result!.value as boolean;
   }
 
   private _stringify(tokens: tokens, spaces: boolean): string {
@@ -330,7 +331,7 @@ export default class Permissions {
         const spaces = Math.max(...rules.map(v => v.prior)).toString().length;
         const list = rules.map(v => `${v.prior}.${" ".repeat(spaces - v.prior.toString().length)} [${v.state}] ${v.expr.stringify()}`);
         this.response(`Current state: **${this._perms[id].state}**\`\`\`\n${list.join("\n")}\n\`\`\``);
-        break;
+        return;
 
       // add a rule
       case "add":
@@ -368,14 +369,14 @@ export default class Permissions {
         }
 
         this.response(len === 0 ? "No rules were removed" : `Removed ${len} rules`);
-        break;
+        return;
 
       // reorder rules
       case "cleanup":
         this._perms[id].rules = rules.map((v, i) => Object.assign(v, { prior: rules.length - i }));
         this.ctx.dbQuery(`WITH updateData AS (SELECT prior AS tmp, ROW_NUMBER() OVER (ORDER BY prior) rn - 1 FROM permsRules WHERE parent = ${moduleId}) UPDATE permsRules SET prior = rn FROM updateData WHERE tmp = prior AND parent = ${moduleId};`);
         this.response("Done!");
-        break;
+        return;
 
       // change state of id or entire ruleset
       case "state":
@@ -384,6 +385,7 @@ export default class Permissions {
         if (isNaN(prior)) {
           if (this._perms[id]) this._perms[id].state = state;
           else this._perms[id] = { state: state, rules: [] };
+
           this.ctx.dbQuery(`UPDATE permsMain SET state = ${state === "allow"} WHERE id = ${moduleId};`);
           this.response("Done!");
           return;
@@ -397,7 +399,7 @@ export default class Permissions {
         rules.find(v => v.prior === +prior)!.state = state;
         this.ctx.dbQuery(`UPDATE permsRules SET state = ${state === "allow"} WHERE parent = ${moduleId} AND prior = ${prior};`);
         this.response("Done!");
-        break;
+        return;
 
       // move rule from one priority to another
       case "move":
@@ -417,7 +419,7 @@ export default class Permissions {
         rules.splice(rules.findIndex(v => v.temp), 1);
 
         this.response("Done!");
-        break;
+        return;
     }
   }
 
