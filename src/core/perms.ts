@@ -262,7 +262,8 @@ export default class Permissions {
   public ctx!: Core;
 
   private _perms: perms = {};
-  private _last: [string, string, string] = ["", "", ""];
+  // [channel id, message id, guild id, author id]
+  private _last: [string, string, string, string] = ["", "", "", ""];
   private _dict: { [key: number]: string } = {};
 
   public async init(ctx: Core): Promise<void> {
@@ -299,7 +300,7 @@ export default class Permissions {
     const match = PATTERN.exec(msg.content.toLowerCase());
     if (!match) return;
 
-    this._last = [msg.channel_id, msg.id, msg.guild_id ?? "-1"];
+    this._last = [msg.channel_id, msg.id, msg.guild_id ?? "-1", msg.author.id];
 
     const id = match.groups!.id;
     const method = match.groups!.method.split(/\s+/)[0];
@@ -437,7 +438,7 @@ export default class Permissions {
 
   // add permission to id
   private async add(id: string, state: state, prior: number, expression: string): Promise<void | string> {
-    const tokens = new Lexer(expression.replaceAll("cthis", this._last[0]).replaceAll("uthis", this._last[1]).replaceAll("gthis", this._last[2])).tokens;
+    const tokens = new Lexer(expression.replaceAll("cthis", this._last[0]).replaceAll("uthis", this._last[3]).replaceAll("gthis", this._last[2])).tokens;
     if (typeof tokens === "string") return tokens;
 
     const expr = new Expression(tokens);
