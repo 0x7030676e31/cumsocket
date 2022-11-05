@@ -2,6 +2,7 @@
 .VSCodeCounter/
 build/
 node_modules/
+spaghetti/
 
 .env
 cumsocket.code-workspace
