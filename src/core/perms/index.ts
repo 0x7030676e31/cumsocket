@@ -117,7 +117,7 @@ export default class Permissions {
           const idMaxLength = Math.max(...this.refers.map(v => v[0].length));
           const rulesMaxLength = Math.max(...Object.values(this.perms).map(v => v.rules.length.toString().length));
           
-          const content = this.refers.map(([name, idx]) => `${idx}.${" ".repeat(numMaxLength - idx.toString().length)} | ${name}${" ".repeat(idMaxLength - name.length)} | ${this.perms[name].state ? "allow" : "block"} | ${this.perms[name].rules.length}${" ".repeat(rulesMaxLength - this.perms[name].rules.length)}|${ids.includes(name) ? "" : " unused"}`).join("\n");
+          const content = this.refers.map(([name, idx]) => `${idx}.${" ".repeat(numMaxLength - idx.toString().length)} | ${name}${" ".repeat(idMaxLength - name.length)} | ${this.perms[name].state ? "allow" : "block"} | ${this.perms[name].rules.length}${" ".repeat(rulesMaxLength - this.perms[name].rules.length.toString().length)} |${ids.includes(name) ? "" : " unused"}`).join("\n");
           this.respond(`\`\`\`\n${content}\n\`\`\``);
           break;
 
@@ -296,7 +296,7 @@ export default class Permissions {
       message_reference: { channel_id: this.meta.channel, message_id: this.meta.message },
       allowed_mentions: {
         parse: ["everyone", "roles", "users"],
-        replied_user: true,
+        replied_user: false,
       },
       tts: false,
     });
