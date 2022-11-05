@@ -1,13 +1,22 @@
-// TODO
+import * as types from "../api/types";
 
+export default class Client {
+  // private _user!: user;
+  
+  public async dispatch(payload: any, event: string): Promise<void> {
+    // switch (event) {
+    //   case "READY":
+    //     this._user = payload.user;
+    //     break;
+    // }
+  }
 
+  // public get user(): user {
+  //   return structuredClone(this._user);
+  // }
+}
 
-// import * as types from "../api/types";
+type user = any;
+// interface user {
 
-// export default class Client {
-//   public async dispatch(payload: any, event: string): Promise<void> {
-//     switch(event) {
-    
-//     }
-//   }
 // }

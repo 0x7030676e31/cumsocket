@@ -1,6 +1,8 @@
-import { Client, QueryResult } from "pg";
+import { Client as dbClient, QueryResult } from "pg";
 import Permissions from "./perms";
 import Handler from "./handler";
+import Client from "./client";
+
 import fs from "fs";
 
 export default class Core extends Handler {
@@ -9,7 +11,8 @@ export default class Core extends Handler {
   private _eventListeners: { [key: string]: [string, ((data: any, events: string) => Promise<void> | void)][] } = {};
   private _ids: string[] = [];
   private _perms!: Permissions;
-  private _db!: Client;
+  private _db!: dbClient;
+  public readonly _client: Client = new Client();
 
   constructor(token: string) {
     super(token);
@@ -29,12 +32,13 @@ export default class Core extends Handler {
   // connect to the database
   private loadDB(): void {
     if (!process.env.DATABASE_URL) throw new Error("Cannot connect to database: DATABASE_URL is not set");
-    this._db = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+    this._db = new dbClient({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
     this._db.connect();
   }
 
   // handle an incoming message payload
   private async dispatch(data: any, event: string): Promise<void> {
+    // this._client.dispatch(data, event);
     this._eventListeners[event]?.forEach(v => this._perms.process(...v, data, event));
   }
 
