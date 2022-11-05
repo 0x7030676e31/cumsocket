@@ -2,6 +2,8 @@ import { Client as dbClient, QueryResult } from "pg";
 import Permissions from "./perms";
 import Handler from "./handler";
 import Client from "./client";
+import api from "../api";
+export * as types from "../api/types";
 
 import fs from "fs";
 
@@ -12,7 +14,8 @@ export default class Core extends Handler {
   private _ids: string[] = [];
   private _perms!: Permissions;
   private _db!: dbClient;
-  public readonly _client: Client = new Client();
+  public readonly client: Client = new Client();
+  public readonly api: typeof api = api;
 
   constructor(token: string) {
     super(token);

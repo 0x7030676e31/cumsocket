@@ -1,6 +1,4 @@
-import Core from "../core";
-import api from "../../api";
-import * as types from "../../api/types";
+import Core, { types } from "../core";
 import Expression from "./expression";
 
 type dbMain = { id: number, module: string, state: boolean }[];
@@ -34,17 +32,24 @@ export default class Permissions {
     const max = Math.max(...permsMain.map(v => v.id), 0);
     missing.forEach((v, i) => permsMain.push({ id: max + i + 1, module: v, state: true }));
     
+    let modulesCount = 0;
+    let rulesCount = 0;
+
     // process the permissions
     permsMain.forEach(v => {
+      if (!ctx.ids.includes(v.module)) return;
       this.refers.push([v.module, v.id]);
       this.perms[v.module] = { state: v.state, rules: [] };
+      modulesCount++;
     });
     permsRules.forEach(v => {
-      const parent = this.refers.find(ref => ref[1] === v.parent)![0];
+      const parent = this.refers.find(ref => ref[1] === v.parent)?.[0];
+      if (!parent) return;
       this.perms[parent].rules.push({ state: v.state, prior: v.prior, expr: Expression.decode(v.expr) });
+      rulesCount++;
     });
 
-    ctx.log("Permissions", `Successfully loaded ${permsRules.length} rules for ${permsMain.length - missing.length} modules.`);
+    ctx.log("Permissions", `Successfully loaded ${rulesCount} rules for ${modulesCount - missing.length} modules.`);
   }
 
   // Process event and execute callback if all conditions are met
@@ -106,6 +111,7 @@ export default class Permissions {
     // perform root operations
     if (groups.root) {
       switch (groups.root) {
+        // list all modules + their state, index and amount of rules
         case "--list":
           const numMaxLength = Math.max(...this.refers.map(v => v[1].toString().length));
           const idMaxLength = Math.max(...this.refers.map(v => v[0].length));
@@ -115,6 +121,7 @@ export default class Permissions {
           this.respond(`\`\`\`\n${content}\n\`\`\``);
           break;
 
+        // remove all unused modules from the database
         case "--cleanup":
           const unused = this.refers.filter(([name]) => !ids.includes(name));
           if (unused.length) {
@@ -126,6 +133,7 @@ export default class Permissions {
           this.respond(`Successfully cleaned up ${unused.length} unused modules.`);
           break; 
 
+        // deletes everything from the database and insert fresh data
         case "--clearall":
           await this.ctx.dbQuery("TRUNCATE TABLE permsMain RESTART IDENTITY;");
           await this.ctx.dbQuery("TRUNCATE TABLE permsRules;");
@@ -160,7 +168,7 @@ export default class Permissions {
       case "list":
         const priorMaxLength = Math.max(...perms.rules.map(v => v.prior.toString().length));
         const content = perms.rules.map(v => `${v.prior}.${" ".repeat(priorMaxLength - v.prior.toString().length)} | ${v.state ? "allow" : "block"} | ${v.expr.stringify()}`).join("\n");
-        this.respond(`Current default state: **${perms.state ? "allow" : "block"}**\n\`\`\`\n${content}\n\`\`\``);
+        this.respond(`Current default state: **${perms.state ? "allow" : "block"}**${content ? `\n\`\`\`\n${content}\n\`\`\`` : ""}`);
         break;
 
       // add a new rule
@@ -283,7 +291,7 @@ export default class Permissions {
 
   // repond to the message
   private async respond(content: string): Promise<void> {
-    api.messages.send(this.meta.channel, {
+    this.ctx.api.messages.send(this.meta.channel, {
       content,
       message_reference: { channel_id: this.meta.channel, message_id: this.meta.message },
       allowed_mentions: {
@@ -295,9 +303,9 @@ export default class Permissions {
   }
 }
 
-// $ perms list
-// $ perms cleanup
-// $ perms clearall
+// $ perms --list
+// $ perms --cleanup
+// $ perms --clearall
 // $ perms egg list
 // $ perms egg add allow :1 guild == 123
 // $ perms egg add block :2 channel == 456

@@ -19,6 +19,7 @@ export default class Handler extends EventEmitter {
 
   constructor(token: string) {
     super();
+    this.log("Gateway", "Connecting...");
     this.token = token;
     this.connect();
   }

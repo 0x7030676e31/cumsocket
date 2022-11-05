@@ -1,6 +1,4 @@
-import Core from "../core/core";
-import api from "../api";
-import * as types from "../api/types";
+import Core, { types } from "../core/core";
 
 const EGGS = ["🥚", "🍳"];
 
@@ -16,13 +14,15 @@ export default class Egg {
     this.self = data.user.id;
   }
 
+  // react to messages with an egg emoji
   @Core.listen("MESSAGE_CREATE")
   public async onMessageCreate(msg: types.messages.Message): Promise<void> {
     if (!msg.content.toLowerCase().includes("egg") || msg.author.id === this.self) return;
   
-    api.messages.react(msg.channel_id, msg.id, this.getEgg());
+    this.ctx.api.messages.react(msg.channel_id, msg.id, this.getEgg());
   }
 
+  // check if a message has an egg emoji or contains egg word and delete / add emoji
   @Core.listen("MESSAGE_EDIT")
   public async onMessageEdit(msg: types.messages.Message): Promise<void> {
     if (msg.author.id === this.self) return;
@@ -30,15 +30,17 @@ export default class Egg {
     const hasEggEmoji = await this.hasEgg(msg.channel_id, msg.id);
     const hasEggText = msg.content.toLowerCase().includes("egg");
 
-    if (hasEggEmoji && !hasEggText) api.messages.reactionDelete(msg.channel_id, msg.id, hasEggEmoji);
-    else if (!hasEggEmoji && hasEggText) api.messages.react(msg.channel_id, msg.id, this.getEgg());
+    if (hasEggEmoji && !hasEggText) this.ctx.api.messages.reactionDelete(msg.channel_id, msg.id, hasEggEmoji);
+    else if (!hasEggEmoji && hasEggText) this.ctx.api.messages.react(msg.channel_id, msg.id, this.getEgg());
   }
 
+  // check if a message has an egg emoji
   private async hasEgg(channel: string, message: string): Promise<null | string> {
-    const messages = await api.messages.get(channel, { limit: 1, around: message });
+    const messages = await this.ctx.api.messages.get(channel, { limit: 1, around: message });
     return messages[0].reactions?.find(r => EGGS.includes(r.emoji.name))?.emoji.name ?? null;
   }
 
+  // get a random egg emoji
   private getEgg(): string {
     return EGGS[Math.random() > +process.env.rare_egg_chance! ? 0 : 1];
   }

@@ -1,6 +1,4 @@
-import Core from "../core/core";
-import api from "../api";
-import * as types from "../api/types";
+import Core, { types } from "../core/core";
 
 // const CTYPES = [];
 
@@ -26,7 +24,7 @@ export default class Bridge {
     const att = msg.attachments.filter(v => /^(image|video)/.test(v.content_type!)).map(v => v.url);
 
     const content = [...urls, ...att].join("\n");
-    api.webhooks.execute(...this._webhook, { content, username: msg.author.username, avatar_url: this.getAvatar(msg.author) });
+    this.ctx.api.webhooks.execute(...this._webhook, { content, username: msg.author.username, avatar_url: this.getAvatar(msg.author) });
   }
 
   private getAvatar(author: types.users.Author): string {
