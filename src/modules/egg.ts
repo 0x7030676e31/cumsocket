@@ -1,6 +1,7 @@
 import Core, { types } from "../core/core";
 
 const EGGS = ["🥚", "🍳"];
+const REG = /egg|🥚|🍳/i;
 
 export default class Egg {
   public readonly ctx!: Core;
@@ -17,7 +18,7 @@ export default class Egg {
   // react to messages with an egg emoji
   @Core.listen("MESSAGE_CREATE")
   public async onMessageCreate(msg: types.messages.Message): Promise<void> {
-    if (!msg.content.toLowerCase().includes("egg") || msg.author.id === this.self) return;
+    if (!REG.test(msg.content) || msg.author.id === this.self) return;
   
     this.ctx.api.messages.react(msg.channel_id, msg.id, this.getEgg());
   }
@@ -28,7 +29,7 @@ export default class Egg {
     if (msg.author.id === this.self) return;
     
     const hasEggEmoji = await this.hasEgg(msg.channel_id, msg.id);
-    const hasEggText = msg.content.toLowerCase().includes("egg");
+    const hasEggText = REG.test(msg.content);
 
     if (hasEggEmoji && !hasEggText) this.ctx.api.messages.reactionDelete(msg.channel_id, msg.id, hasEggEmoji);
     else if (!hasEggEmoji && hasEggText) this.ctx.api.messages.react(msg.channel_id, msg.id, this.getEgg());
