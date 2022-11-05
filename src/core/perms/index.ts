@@ -127,7 +127,7 @@ export default class Permissions {
           break; 
 
         case "--clearall":
-          await this.ctx.dbQuery("TRUNCATE TABLE permsMain;");
+          await this.ctx.dbQuery("TRUNCATE TABLE permsMain RESTART IDENTITY;");
           await this.ctx.dbQuery("TRUNCATE TABLE permsRules;");
           await this.ctx.dbQuery(`INSERT INTO permsMain (module, state) VALUES ${ids.map(v => `(${v}, true)`).join(", ")};`);
 
