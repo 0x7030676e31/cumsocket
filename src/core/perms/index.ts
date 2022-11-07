@@ -15,6 +15,9 @@ export default class Permissions {
   private perms: perms = {};
   private refers: [string, number][] = [];
 
+  private queue: { id: string; callback: (data: any, events: string) => Promise<void> | void; payload: any; event: string }[] = [];
+  private ready: boolean = false;
+  
   private meta: meta = { user: "", channel: "", message: "" };
 
   // load the permissions
@@ -27,7 +30,7 @@ export default class Permissions {
 
     // insert missing modules
     const missing = ctx.ids.filter(id => !permsMain.some(v => v.module === id));
-    if (missing.length) ctx.dbQuery(`INSERT INTO permsMain (module, state) VALUES ${missing.map(v => `('${v}', true)`).join(", ")};`);
+    if (missing.length) ctx.dbQuery("INSERT INTO permsMain (module, state) VALUES $1;", missing.map(v => `('${v}', true)`).join(", "));
 
     const max = Math.max(...permsMain.map(v => v.id), 0);
     missing.forEach((v, i) => permsMain.push({ id: max + i + 1, module: v, state: true }));
@@ -50,14 +53,16 @@ export default class Permissions {
     });
 
     ctx.log("Permissions", `Successfully loaded ${rulesCount} rules for ${modulesCount - missing.length} modules.`);
+    
+    // process the queue
+    this.ready = true;
+    this.queue.forEach(v => this.process(v.id, v.callback, v.payload, v.event));
   }
 
   // Process event and execute callback if all conditions are met
-  public async process(id: string, callback: (data: any, events: string) => Promise<void> | void, payload: any, event: string, ): Promise<void> {
-    if (!this.perms[id]) {
-      callback(payload, event);
-      return;
-    }
+  public async process(id: string, callback: (data: any, events: string) => Promise<void> | void, payload: any, event: string): Promise<void | any> {
+    if (!this.ready) return this.queue.push({ id, callback, payload, event });
+    if (!this.perms[id]) return callback(payload, event);
 
     // extract data from payload
     let guild: string;
@@ -117,27 +122,28 @@ export default class Permissions {
           const idMaxLength = Math.max(...this.refers.map(v => v[0].length));
           const rulesMaxLength = Math.max(...Object.values(this.perms).map(v => v.rules.length.toString().length));
           
-          const content = this.refers.map(([name, idx]) => `${idx}.${" ".repeat(numMaxLength - idx.toString().length)} | ${name}${" ".repeat(idMaxLength - name.length)} | ${this.perms[name].state ? "allow" : "block"} | ${this.perms[name].rules.length}${" ".repeat(rulesMaxLength - this.perms[name].rules.length.toString().length)} |${ids.includes(name) ? "" : " unused"}`).join("\n");
+          const content = this.refers.map(([name, idx]) => `${idx}.${" ".repeat(numMaxLength - idx.toString().length)} | ${name}${" ".repeat(idMaxLength - name.length)} | ${this.perms[name].state ? "allow" : "block"} | ${this.perms[name].rules.length}${" ".repeat(rulesMaxLength - this.perms[name].rules.length.toString().length)}`).join("\n");
           this.respond(`\`\`\`\n${content}\n\`\`\``);
           break;
 
+        // TO CHANGE
         // remove all unused modules from the database
-        case "--cleanup":
-          const unused = this.refers.filter(([name]) => !ids.includes(name));
-          if (unused.length) {
-            await this.ctx.dbQuery(`DELETE FROM permsMain WHERE id IN (${unused.map(v => v[1]).join(", ")});`);
-            await this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent IN (${unused.map(v => v[1]).join(", ")});`);
-          }
+        // case "--cleanup":
+        //   const unused = this.refers.filter(([name]) => !ids.includes(name));
+        //   if (unused.length) {
+        //     await this.ctx.dbQuery("DELETE FROM permsMain WHERE id IN ($1);", unused.map(v => v[1]).join(", "));
+        //     await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent IN ($1);", unused.map(v => v[1]).join(", "));
+        //   }
           
-          // TODO: reorder the ids in permsMain and permsRules (not necessary, but nice to have)
-          this.respond(`Successfully cleaned up ${unused.length} unused modules.`);
-          break; 
+        //   // TODO: reorder the ids in permsMain and permsRules (not necessary, but nice to have)
+        //   this.respond(`Successfully cleaned up ${unused.length} unused modules.`);
+        //   break; 
 
         // deletes everything from the database and insert fresh data
         case "--clearall":
           await this.ctx.dbQuery("TRUNCATE TABLE permsMain RESTART IDENTITY;");
           await this.ctx.dbQuery("TRUNCATE TABLE permsRules;");
-          await this.ctx.dbQuery(`INSERT INTO permsMain (module, state) VALUES ${ids.map(v => `(${v}, true)`).join(", ")};`);
+          await this.ctx.dbQuery("INSERT INTO permsMain (module, state) VALUES $1;", ids.map(v => `(${v}, true)`).join(", "));
 
           this.refers = [];
           ids.forEach((v, i) => {
@@ -153,10 +159,7 @@ export default class Permissions {
 
     // get the id and check if it exists
     const id = groups.id;
-    if (!ids.includes(id)) {
-      this.respond(`Module "${id}" does not exist.`);
-      return;
-    }
+    if (!ids.includes(id)) return this.respond(`Module "${id}" does not exist.`);
 
     const parent = this.refers.find(v => v[0] === id)![1];
     const perms = this.perms[id];
@@ -196,27 +199,27 @@ export default class Permissions {
         let count: number = 0;
         if (range === "all") {
           count = perms.rules.length;
-          await this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${parent};`);
+          await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1;", parent);
           perms.rules = [];
         } else if (/^\d+$/.test(range)) {
-          await this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${parent} AND prior = ${range};`);
-          if (perms.rules.some(v => v.prior === +range)) {
-            count = 1;
-            perms.rules.splice(perms.rules.findIndex(v => v.prior === +range), 1);
-          }
+          await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1 AND prior = $2;", parent, range);
+          if (!perms.rules.some(v => v.prior === +range)) break;
+
+          count = 1;
+          perms.rules.splice(perms.rules.findIndex(v => v.prior === +range), 1);
         } else if (/^\d+\.\.\d+/.test(range)) {
           const [start, end] = range.split("..").map(v => +v);
-          await this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${parent} AND prior BETWEEN ${start} AND ${end};`);
+          await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1 AND prior BETWEEN $2 AND $3;", parent, start, end);
           count = perms.rules.filter(v => v.prior >= start && v.prior <= end).length;
           perms.rules = perms.rules.filter(v => v.prior < start || v.prior > end);
         } else if (/^\.\.\d+/.test(range)) {
           const end = +range.slice(2);
-          await this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${parent} AND prior <= ${end};`);
+          await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1 AND prior <= $2;", parent, end);
           count = perms.rules.filter(v => v.prior <= end).length;
           perms.rules = perms.rules.filter(v => v.prior > end);
         } else {
           const start = +range.slice(2);
-          await this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${parent} AND prior >= ${start};`);
+          await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1 AND prior >= $2;", parent, start);
           count = perms.rules.filter(v => v.prior >= start).length;
           perms.rules = perms.rules.filter(v => v.prior < start);
         }
@@ -227,7 +230,7 @@ export default class Permissions {
       // reorders the rules
       case "cleanup":
         perms.rules = perms.rules.sort((a, b) => (a.prior < b.prior) as unknown as number);
-        this.ctx.dbQuery(`WITH updateData AS (SELECT prior AS tmp, ROW_NUMBER() OVER (ORDER BY prior) rn - 1 FROM permsRules WHERE parent = ${parent}) UPDATE permsRules SET prior = rn FROM updateData WHERE tmp = prior AND parent = ${parent};`);
+        this.ctx.dbQuery("WITH updateData AS (SELECT prior AS tmp, ROW_NUMBER() OVER (ORDER BY prior) rn - 1 FROM permsRules WHERE parent = $1) UPDATE permsRules SET prior = rn FROM updateData WHERE tmp = prior AND parent = $1;", parent);
         this.respond("Successfully cleaned up the rules.");
         break;
 
@@ -238,19 +241,16 @@ export default class Permissions {
 
         if (isNaN(statePrior)) {
           perms.state = newState;
-          await this.ctx.dbQuery(`UPDATE permsMain SET state = ${newState} WHERE id = ${parent};`);
+          await this.ctx.dbQuery("UPDATE permsMain SET state = $1 WHERE id = $2;", newState, parent);
           this.respond(`Successfully changed the default state of module "${id}" to ${newState ? "allow" : "block"}.`);
           break;
         }
 
         const rule = perms.rules.find(v => v.prior === statePrior);
-        if (!rule) {
-          this.respond(`Rule with prior ${statePrior} does not exist.`);
-          return;
-        }
+        if (!rule) return this.respond(`Rule with prior ${statePrior} does not exist.`);
 
         rule.state = newState;
-        await this.ctx.dbQuery(`UPDATE permsRules SET state = ${newState} WHERE parent = ${parent} AND prior = ${statePrior};`);
+        await this.ctx.dbQuery("UPDATE permsRules SET state = $1 WHERE parent = $2 AND prior = $3;", newState, parent, statePrior);
         this.respond(`Successfully changed the state of rule with prior ${statePrior} to ${newState ? "allow" : "block"}.`);
         break;
 
@@ -259,13 +259,10 @@ export default class Permissions {
         const from = +groups.move_from;
         const to = +groups.move_to;
 
-        if (!perms.rules.some(v => v.prior === from)) {
-          this.respond(`Rule with prior ${from} does not exist.`);
-          return;
-        }
+        if (!perms.rules.some(v => v.prior === from)) return this.respond(`Rule with prior ${from} does not exist.`);
 
         const tempRule = perms.rules.splice(perms.rules.findIndex(v => v.prior === from), 1)[0];
-        await this.ctx.dbQuery(`DELETE FROM permsRules WHERE parent = ${parent} AND prior = ${from};`);
+        await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1 AND prior = $2;", parent, from);
         await this.insert(id, tempRule.state, to, tempRule.expr);
 
         this.respond(`Successfully moved rule with prior ${from} to ${to}.`);
@@ -280,13 +277,13 @@ export default class Permissions {
 
     if (perms.rules.some(v => v.prior === prior)) {
       perms.rules.forEach((v, i, s) => s[i].prior = v.prior >= prior ? v.prior + 1 : v.prior);
-      await this.ctx.dbQuery(`UPDATE permsRules SET prior = prior + 1 WHERE parent = ${parent} AND prior >= ${prior};`);
+      await this.ctx.dbQuery("UPDATE permsRules SET prior = prior + 1 WHERE parent = $1 AND prior >= $1;", prior);
     }
 
     const idx = perms.rules.findIndex((v, i, s) => prior < (s[i - 1]?.prior ?? Infinity) && prior > v.prior);
     perms.rules.splice(idx === -1 ? perms.rules.length : idx, 0, { state, prior, expr });
 
-    await this.ctx.dbQuery(`INSERT INTO permsRules (parent, state, prior, expr) VALUES (${parent}, ${state}, ${prior}, '${expr.encode()}');`);
+    await this.ctx.dbQuery("INSERT INTO permsRules (parent, state, prior, expr) VALUES ($1, $2, $3, '$4');", parent, state, prior, expr.encode());
   }
 
   // repond to the message
