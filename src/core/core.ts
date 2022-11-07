@@ -88,8 +88,8 @@ export default class Core extends Handler {
     modules.forEach(v => v.init?.(this));
   }
 
-  public async dbQuery(query: string): Promise<QueryResult<any>> {
-    return await this._db.query(query);
+  public async dbQuery(query: string, ...args: any[]): Promise<QueryResult<any>> {
+    return await this._db.query(query.replaceAll(/\$(\d+)/g, (_, i) => `${args[+i - 1]}` ?? "null"));
   }
 
   public get ids(): string[] {

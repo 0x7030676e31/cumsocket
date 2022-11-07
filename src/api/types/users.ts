@@ -11,3 +11,11 @@ export interface Author {
   public_flags: number;
   bot?: boolean;
 }
+
+export interface UserChannel {
+  id: string;
+  type: number;
+  last_message_id: string | null;
+  flags: number;
+  recipients: Author[];
+}
