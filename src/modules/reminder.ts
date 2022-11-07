@@ -12,6 +12,8 @@ export default class Reminder {
   public readonly ctx!: Core;
   public readonly id = "reminder";
 
+  public ignore = true;
+
   private reminders: reminder[] = [];
 
   public async init(ctx: Core): Promise<void> {
