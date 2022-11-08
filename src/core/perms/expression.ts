@@ -16,48 +16,47 @@ export default class Expression extends Lexer {
 
   // FORMAT: 1 char == 16 bits == 4 tokens, token = idx + 1 OR i64 (additionally one "1" bit every 8 bits)
   public encode(): string {
-    let buff: string = "";
-    let text = this._content.replaceAll(/\s+/g, "");
-
-    // encode the expression
-    while (text.length) {
-      const [ match ] = /^(\d+|guild|channel|user|==|!=|&&|\|\||\(|\))/.exec(text)!;
+    let expr = this._content.replaceAll(/\s+/g, "");
+    let bin = "";
+  
+    while (expr.length) {
+      // match token
+      const match = /^(\d+|guild|channel|user|&&|\|\||==|!=|\(|\))/.exec(expr)!;
+      const idx = Expression.table.indexOf(match[0]) + 1 || 10;
+      expr = expr.slice(match[0].length);
       
-      // find the index of the token in the table
-      const idx = (Expression.table.includes(match) ? Expression.table.indexOf(match) : 9) + 1;
-      text = text.slice(match.length);
-      
-      // encode the token
-      buff += `${"0".repeat(4 - idx.toString(2).length)}${idx.toString(2)}`;
-      
+      // insert index token
+      bin += `${"0".repeat(4 - idx.toString(2).length)}${idx.toString(2)}`;
       if (idx !== 10) continue;
-      
-      // encode the id
-      const bin = BigInt(match).toString(2);
-      `${"0".repeat(64 - bin.length)}${bin}`.match(/[01]{8}/g)!.forEach(v => buff += `${v}1`);
+
+      // convert i64 to binary
+      const i64 = BigInt(match[0]).toString(2);
+      bin += `${"0".repeat(64 - i64.length)}${i64}`.match(/[01]{8}/g)!.map(v => `${v}1`).join("");
     }
 
-    // convert binary to text
-    const prefixLength = (16 - ((buff.length + 4) % 16)) / 4;
-    return `${"0".repeat(4 - prefixLength.toString(2).length)}${prefixLength.toString(2)}${buff}${"1111".repeat(prefixLength)}`.match(/[01]{1,16}/g)!.map(v => +`0b${v}`).map(v => String.fromCharCode(v)).join("");
+    const suffixLength = (12 - (bin.length + 4) % 12) / 4;
+    return `${"0".repeat(4 - suffixLength.toString(2).length)}${suffixLength.toString(2)}${bin}${"1111".repeat(suffixLength)}`.match(/[01]{12}/g)!.map(v => String.fromCharCode(+`0b${v}`)).join("").replaceAll("'", "''");
   }
 
-  public static decode(text: string): Expression {
-    // split the text into binary chunks
-    const chunks = text.split("").map(v => v.charCodeAt(0).toString(2)).map(v => `${"0".repeat(16 - v.length)}${v}`).join("").match(/[01]{4}/g)!;
-    const prefix = +`0b${chunks.shift()}`;
-    const bin = chunks.slice(0, prefix * -1);
-
-    let content: string = "";
+  // Decode a binary expression
+  public static decode(str: string): Expression {
+    const chunks = str.split("").map(v => v.charCodeAt(0).toString(2)).map(v => `${"0".repeat(12 - v.length)}${v}`).join("").match(/[01]{4}/g)!;
     
-    // decode the expression
+    // remove suffix
+    const suffixLength = +`0b${chunks.shift()}`;
+    const bin = suffixLength ? chunks.slice(0, suffixLength * -1) : chunks;
+    let text = "";
+  
+    // decode
     while (bin.length) {
-      const idx = +`0b${bin.shift()}`;
-      if (idx !== 10) content += Expression.table[idx - 1];
-      else content += BigInt(`0b${bin.splice(0, 18).join("").match(/[01]{9}/g)!.map(v => v.slice(0, -1)).join("")}`).toString();
-    } 
+      const idx = +`0b${bin.shift()}` - 1;
+    
+      // get token from expr and add to text
+      if (idx !== 9) text += Expression.table[idx];
+      else text += BigInt(`0b${bin.splice(0, 18).join("").match(/[01]{9}/g)!.map(v => v.slice(0, 8)).join("")}`).toString();
+    }
 
-    return new Expression(content);
+    return new Expression(text);
   }
 }
 
