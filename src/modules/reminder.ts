@@ -3,7 +3,7 @@ import Decimal from "decimal.js";
 
 type reminder = { id: string, author: string, channel: string, guild?: string, message: string, time: number, timeout?: NodeJS.Timeout };
 
-const CMD = /^((?<opt_a>remind(\s+me)?\s+(?<time>\d{1,30}(\.\d{1,15})?)\s*(?<unit>s(ec)?|m(mins?)?|h(ours?)?|d(ays?)?|w(eeks?)?|mo(nths?)?|y(ears?)?))|(?<opt_b>reminders?\s+(remove|delete)\s+(?<rm_target>all|\d+))|(?<opt_c>(my\s*)?reminders?))$/;
+const CMD = /^((?<opt_a>remind(\s+me)?\s+(?<time>\d{1,30}(\.\d{1,15})?)\s*(?<unit>s(ec(o  nds?)?)?|m(in(ute)?s?)?|h(ours?)?|d(ays?)?|w(eeks?)?|mo(nths?)?|y(ears?)?))|(?<opt_b>reminders?\s+(remove|delete)\s+(?<rm_target>all|\d+))|(?<opt_c>(my\s*)?reminders?))$/;
 const MAX_REMINDERS = 5;
 const UNITS = { y: 31536000, mo: 2592000, w: 604800, d: 86400, h: 3600, m: 60, s: 1 };
 const CACHE: { [key: string]: string } = {};
@@ -75,16 +75,16 @@ export default class Reminder {
 
     // Add to database
     const whenRemind = sec.add(Date.now() / 1000).floor();
-    const response = (await this.ctx.dbQuery("INSERT INTO reminders (author, channel, guild, message, time) VALUES ($1, $2, $3, $4, $5) RETURNING id;", 
+    const newReminderId = (await this.ctx.dbQuery("INSERT INTO reminders (author, channel, guild, message, time) VALUES ($1, $2, $3, $4, $5) RETURNING id;", 
       msg.author.id,
       msg.channel_id,
       msg.guild_id ?? null,
       msg.id,
       whenRemind.toString()
-    )).rows[0].id;
+    )).rows[0].id.toString();
 
     // Add to local storage and set timeout
-    this.reminders.push({ id: response, author: msg.author.id, channel: msg.channel_id, guild: msg.guild_id, message: msg.id, time: whenRemind.toNumber() });
+    this.reminders.push({ id: newReminderId, author: msg.author.id, channel: msg.channel_id, guild: msg.guild_id, message: msg.id, time: whenRemind.toNumber() });
     this.reminders.at(-1)!.timeout = setTimeout(this.remind.bind(this, this.reminders.at(-1)!), sec.mul(1000).toNumber());
 
     // Send confirmation
@@ -115,17 +115,19 @@ export default class Reminder {
   // display all reminders
   private async reminderList(msg: types.messages.Message): Promise<any> {
     const reminders = this.reminders.filter(v => v.author === msg.author.id);
-    if (!reminders.length) return this.dm(msg.author.id, "You don't have any reminders. If you want to delete some of your reminders, use `$ reminders delete <id or all>`.");
+    if (!reminders.length) return this.dm(msg.author.id, "You don't have any reminders. If you want to add one, use `$ remind me <time>`.");
   
     // Send the reminders
-    const content = reminders.map(v => `**${v.id}** <t:${v.time}:F> https://discord.com/channels/${v.guild ?? "@me"}/${v.channel}/${v.message}`).join("\n");
+    const content = reminders.map(v => `**${v.id}** <t:${v.time * 1000}:F> https://discord.com/channels/${v.guild ?? "@me"}/${v.channel}/${v.message}`).join("\n");
     this.dm(msg.author.id, `You have ${reminders.length} reminders in total:\n${content}\n\nIf you want to delete some of your reminders, use \`$ reminders delete <id or all>\`.`);
   }
 
   // execute a reminder
   private async remind(reminder: reminder): Promise<void> {
     const url = `https://discord.com/channels/${reminder.guild ?? "@me"}/${reminder.channel}/${reminder.message}`;
-    this.dm(reminder.author, `[${reminder.id}] Your reminder is up!\n${url}`);
+    const content = (await this.ctx.api.messages.get(reminder.channel, { around: reminder.message, limit: 1 }))?.[0]?.content;
+
+    this.dm(reminder.author, `[${reminder.id}] Your reminder is up!\n${url}\n\nMessage content: \`${content ?? "Message failed to load."}\``);
     
     this.reminders = this.reminders.filter(v => v.id !== reminder.id);
     this.ctx.dbQuery(`DELETE FROM reminders WHERE id = ${reminder.id};`);

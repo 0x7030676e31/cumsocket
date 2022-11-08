@@ -33,6 +33,7 @@ export async function get(channel: string, query: messages.GetQuery): Promise<me
     path: { channels: channel },
     endpoint: "messages",
     query,
+    noBody: true,
   });
 }
 
