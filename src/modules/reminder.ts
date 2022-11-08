@@ -118,7 +118,7 @@ export default class Reminder {
     if (!reminders.length) return this.dm(msg.author.id, "You don't have any reminders. If you want to add one, use `$ remind me <time>`.");
   
     // Send the reminders
-    const content = reminders.map(v => `**${v.id}** <t:${v.time * 1000}:F> https://discord.com/channels/${v.guild ?? "@me"}/${v.channel}/${v.message}`).join("\n");
+    const content = reminders.map(v => `**${v.id}** <t:${v.time}:F> https://discord.com/channels/${v.guild ?? "@me"}/${v.channel}/${v.message}`).join("\n");
     this.dm(msg.author.id, `You have ${reminders.length} reminders in total:\n${content}\n\nIf you want to delete some of your reminders, use \`$ reminders delete <id or all>\`.`);
   }
 
