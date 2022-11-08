@@ -3,7 +3,7 @@ import Decimal from "decimal.js";
 
 type reminder = { id: string, author: string, channel: string, guild?: string, message: string, time: number, timeout?: NodeJS.Timeout };
 
-const CMD = /^((?<opt_a>remind(\s+me)?\s+(?<time>\d{1,30}(\.\d{1,15})?)\s*(?<unit>s(ec(o  nds?)?)?|m(in(ute)?s?)?|h(ours?)?|d(ays?)?|w(eeks?)?|mo(nths?)?|y(ears?)?))|(?<opt_b>reminders?\s+(remove|delete)\s+(?<rm_target>all|\d+))|(?<opt_c>(my\s*)?reminders?))$/;
+const CMD = /^((?<opt_a>remind(\s+me)?\s+(?<time>\d{1,30}(\.\d{1,15})?)\s*(?<unit>s(ec(o  nds?)?)?|m(in(ute)?s?)?|h(ours?)?|d(ays?)?|w(eeks?)?|mo(nths?)?|y(ears?)?))|(?<opt_b>reminders?\s+(remove|delete)\s+(?<rm_target>all|\d+)$)|(?<opt_c>(my\s*)?reminders?)$)/;
 const MAX_REMINDERS = 5;
 const UNITS = { y: 31536000, mo: 2592000, w: 604800, d: 86400, h: 3600, m: 60, s: 1 };
 const CACHE: { [key: string]: string } = {};
@@ -88,7 +88,7 @@ export default class Reminder {
     this.reminders.at(-1)!.timeout = setTimeout(this.remind.bind(this, this.reminders.at(-1)!), sec.mul(1000).toNumber());
 
     // Send confirmation
-    this.dm(msg.author.id, `I'll remind you in <t:${sec.toNumber()}:R>! Use \`$ my reminders\` to see your reminders.`);
+    this.dm(msg.author.id, `I'll remind you in <t:${sec.mul(1000).toNumber()}:R>! Use \`$ my reminders\` to see your reminders.`);
   }
 
   // Remove a reminder
