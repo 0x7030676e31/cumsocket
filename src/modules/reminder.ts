@@ -3,7 +3,7 @@ import Decimal from "decimal.js";
 
 type reminder = { id: string, author: string, channel: string, guild?: string, message: string, time: number, timeout?: NodeJS.Timeout };
 
-const CMD = /^((?<opt_a>remind(\s+me)?\s+(?<time>\d{1,30}(\.\d{1,15})?)\s*(?<unit>s(ec(o  nds?)?)?|m(in(ute)?s?)?|h(ours?)?|d(ays?)?|w(eeks?)?|mo(nths?)?|y(ears?)?))|(?<opt_b>reminders?\s+(remove|delete)\s+(?<rm_target>all|\d+)$)|(?<opt_c>(my\s*)?reminders?)$)/;
+const CMD = /^((?<opt_a>remind(\s+me)?\s+(?<time>\d{1,30}(\.\d{1,15})?)\s*(?<unit>s(ec(onds?)?)?|m(in(ute)?s?)?|h(ours?)?|d(ays?)?|w(eeks?)?|mo(nths?)?|y(ears?)?))|(?<opt_b>reminders?\s+(remove|delete)\s+(?<rm_target>all|\d+)$)|(?<opt_c>(my\s*)?reminders?)$)/;
 const MAX_REMINDERS = 5;
 const UNITS = { y: 31536000, mo: 2592000, w: 604800, d: 86400, h: 3600, m: 60, s: 1 };
 const CACHE: { [key: string]: string } = {};
@@ -118,7 +118,7 @@ export default class Reminder {
     if (!reminders.length) return this.dm(msg.author.id, "You don't have any reminders. If you want to add one, use `$ remind me <time>`.");
   
     // Send the reminders
-    const content = reminders.map(v => `**${v.id}** <t:${v.time}:F> https://discord.com/channels/${v.guild ?? "@me"}/${v.channel}/${v.message}`).join("\n");
+    const content = reminders.map(v => `**${v.id}** <t:${v.time * 1000}:F> https://discord.com/channels/${v.guild ?? "@me"}/${v.channel}/${v.message}`).join("\n");
     this.dm(msg.author.id, `You have ${reminders.length} reminders in total:\n${content}\n\nIf you want to delete some of your reminders, use \`$ reminders delete <id or all>\`.`);
   }
 
