@@ -88,7 +88,7 @@ export default class Reminder {
     this.reminders.at(-1)!.timeout = setTimeout(this.remind.bind(this, this.reminders.at(-1)!), sec.mul(1000).toNumber());
 
     // Send confirmation
-    this.dm(msg.author.id, `I'll remind you in <t:${sec.mul(1000).toNumber()}:R>! Use \`$ my reminders\` to see your reminders.`);
+    this.dm(msg.author.id, `I'll remind you in <t:${sec.toNumber()}:R>! Use \`$ my reminders\` to see your reminders.`);
   }
 
   // Remove a reminder

@@ -10,6 +10,15 @@ export async function send(channel: string, payload: messages.SendPayload): Prom
   });
 }
 
+export async function respondWithContent(channel: string, message: string, content: string, mention: boolean = false): Promise<messages.Message> {
+  return await Api.fetch(`channels/${channel}/messages`, {
+    path: { channels: channel },
+    endpoint: "messages",
+    body: { content, message_reference: { channel_id: channel, message_id: message }, allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: mention }, tts: false },
+    nonce: true,
+  });
+}
+
 export async function edit(channel: string, message: string, payload: messages.SendPayload): Promise<messages.Message> {
   return await Api.fetch(`channels/${channel}/messages/`, {
     method: "PATCH",

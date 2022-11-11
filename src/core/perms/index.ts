@@ -288,15 +288,7 @@ export default class Permissions {
 
   // repond to the message
   private async respond(content: string): Promise<void> {
-    this.ctx.api.messages.send(this.meta.channel, {
-      content,
-      message_reference: { channel_id: this.meta.channel, message_id: this.meta.message },
-      allowed_mentions: {
-        parse: ["everyone", "roles", "users"],
-        replied_user: false,
-      },
-      tts: false,
-    });
+    this.ctx.api.messages.respondWithContent(this.meta.channel, this.meta.message, content);
   }
 }
 

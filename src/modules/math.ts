@@ -7,21 +7,19 @@ export default class Math {
   public readonly id = "math";
   public readonly env = ["math_precision", "math_display_precision"];
 
-  ignore = true;
 
-  constructor() {
-    const expr = new MathExpr("1+2");
-    console.log(expr.result);
-  }
-
-  // public readonly ignore = true;
-
-  public async init(ctx: Core): Promise<void> {
+  public async init(): Promise<void> {
     Decimal.set({ precision: +process.env.math_precision! });
   }
 
   @Core.listen("MESSAGE_CREATE")
   public async onMessageCreate(msg: types.messages.Message): Promise<void> {
-    // TODO
+    if (!msg.content.length || msg.author.bot) return;
+
+    const expr = new MathExpr(msg.content);
+    const result = expr.result;
+
+    if (!result) return;
+    this.ctx.api.messages.respondWithContent(msg.channel_id, msg.id, result);
   }
 }
