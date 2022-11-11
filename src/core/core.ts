@@ -61,12 +61,12 @@ export default class Core extends Handler {
       .filter(v => this.isClass(v))
       .concat([ require("./perms").default ])
       .map<Module>(v => Object.assign(new v(this), { ctx: this }))
-      .filter(v => {
+      .filter(module => {
         // check if the module has a correct id and if all env variables are set
-        if (v.ignore === true) return false;
-        if (!v.id && typeof v.id !== "string" && !/^[a-zA-Z]{1,16}$/.test(v.id)) throw new Error(`Module ${v.constructor.name} does not have a valid id`);
-        v.env?.forEach(v => {
-          if (!process.env[v]) throw new Error(`Module ${v.constructor.name} requires environment variable ${v}`);
+        if (module.ignore === true) return false;
+        if (!module.id && typeof module.id !== "string" && !/^[a-zA-Z]{1,16}$/.test(module.id)) throw new Error(`Module ${module.constructor.name} does not have a valid id`);
+        module.env?.forEach(v => {
+          if (!process.env[v]) throw new Error(`Module ${module.constructor.name} requires environment variable ${v}`);
         });
         return true;
       });
