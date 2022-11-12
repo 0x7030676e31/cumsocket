@@ -110,15 +110,14 @@ export default class Handler extends EventEmitter {
     this._ws?.close();
   }
 
-  
-  public async presenceUpdate(): Promise<void> {
-    // TODO
-  }
-
   public async disconnect(): Promise<void> {
     this.log("Gateway", "Disconnecting...");
     this._ws.close(1000);
     process.exit(0);
+  }
+
+  private async voiceStateUpdate(payload: VoiceState): Promise<void> {
+    this._ws.send(JSON.stringify({ op: 4, d: payload }));
   }
 
   public log(header: string, msg: string): void {
@@ -136,4 +135,12 @@ export default class Handler extends EventEmitter {
     // console.log(`\x1b[35m(${time}) \x1b[34m[${header}] \x1b[36m${msg}\x1b[0m`);
     console.log(`(${time}) [${header}] ${msg}`);
   }
+}
+
+interface VoiceState {
+  guild_id: string | null;
+  channel_id: string | null;
+  self_mute: boolean;
+  self_deaf: boolean;
+  self_video: boolean;
 }

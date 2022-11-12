@@ -63,12 +63,13 @@ export default class Lexer {
       .replaceAll("τ", "tau")
       .replaceAll("√", "sqrt")
       .replaceAll(/[×⋅∙•]/g, "*")
-      .replaceAll(/[÷:]/g, "/");
+      .replaceAll(/[÷:]/g, "/")
+      .toLowerCase();
   }
 
   public parse(): Decimal | null {
     // check if expression content is long enough
-    if (this.content.length === 0 || /^[+\-]\s*[\s\d\.xob]+$/.test(this.content)) return null;
+    if (this.content.length === 0 || /^([+\-]?\s*[\s\d\.xob]+|[a-z]+)$/.test(this.content)) return null;
 
     while (this.cursor < this.content.length) {
       const token = this.next();
@@ -214,12 +215,13 @@ export default class Lexer {
   private eval(tokens: FmtdTokens): Decimal | null {
     // remove "+" or "-" at the beginning
     if (tokens[0].type === "operator") {
-      if (tokens.length === 1) return null;
       if (tokens[0].value === "-") tokens[1].value = (tokens[1] as Unit).value.neg();
       else if (tokens[0].value !== "+") return null;
 
       tokens.shift();
     }
+
+    if (!tokens.length) return null;
 
     // negate all numbers that have a - before them
     tokens.forEach((t, i, s) => s[i - 1]?.type === "operator" && t.value === "-" && s[i + 1]?.type === "number" ? s.splice(i, 2, { type: "number", value: (s[i + 1] as Unit).value.neg() }) : 0)

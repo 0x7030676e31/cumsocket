@@ -1,5 +1,7 @@
 import Decimal from "decimal.js";
 
+Decimal.set({ precision: +process.env.math_precision! });
+
 class Std {
   private static readonly one = new Decimal(1);
   private static readonly half = new Decimal(0.5);

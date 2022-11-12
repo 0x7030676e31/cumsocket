@@ -28,7 +28,7 @@ class Api {
 
   // generate new header
   private getHeader() {
-    return Object.assign(structuredClone(this._headers), { Authorization: process.env.token! });
+    return Object.assign(structuredClone(this._headers), { Authorization: process.env.TOKEN! });
   }
 
   // generate nonce (for message confirmation)
