@@ -1,4 +1,4 @@
-import Core, { types } from "../core";
+import Core, { types } from "..";
 import Expression from "./expression";
 
 type dbMain = { id: number, module: string, state: boolean }[];

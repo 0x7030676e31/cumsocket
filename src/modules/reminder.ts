@@ -1,4 +1,4 @@
-import Core, { types } from "../core/core";
+import Core, { types } from "../core";
 import Decimal from "decimal.js";
 
 type reminder = { id: string, author: string, channel: string, guild?: string, message: string, time: number, timeout?: NodeJS.Timeout };

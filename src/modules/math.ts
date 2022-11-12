@@ -1,4 +1,4 @@
-import Core, { types } from "../core/core";
+import Core, { types } from "../core";
 import MathExpr from "./math/";
 
 export default class Math {

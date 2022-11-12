@@ -1,4 +1,4 @@
-import Core, { types } from "../core/core";
+import Core, { types } from "../core";
 
 const EGGS = ["🥚", "🍳"];
 const REG = /egg|🥚|🍳/i;

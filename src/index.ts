@@ -1,4 +1,4 @@
-import Core from "./core/core";
+import Core from "./core";
 import { config } from "dotenv";
 config();
 
