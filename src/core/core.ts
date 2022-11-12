@@ -72,7 +72,7 @@ export default class Core extends Handler {
       });
 
     // add ids to list
-    modules.forEach(v => this._ids.push(v.id) && this.log("Core", `Loaded module "${v.id}"`));
+    modules.forEach(v => this._ids.push(v.id) && this.log("Core", `Loaded module "${v.id}".`));
     this._perms = modules.at(-1) as Permissions;
 
     // load listeners and bind them to the modules

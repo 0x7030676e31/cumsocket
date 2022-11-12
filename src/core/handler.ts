@@ -98,7 +98,7 @@ export default class Handler extends EventEmitter {
 
     const ws = this._ws = new WebSocket(this.url);
 
-    ws.once("open", () => { ws.send(this.getInitPayload(re)); this.log("Gateway", "Connection established")} );
+    ws.once("open", () => { ws.send(this.getInitPayload(re)); this.log("Gateway", "Connection established.")} );
     ws.once("close", this.onClose.bind(this));
     ws.on("message", this.onMessage.bind(this));
   }

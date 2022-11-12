@@ -45,7 +45,7 @@ export default class MyModule {
 
   // This method will be called when module is loaded
   public async init(ctx: Core) {
-    ctx.log("MyModule", "Module loaded!");
+    ctx.log("MyModule", "Module loaded! ");
   }
 
   // On MESSAGE_CREATE event
@@ -57,20 +57,15 @@ export default class MyModule {
 ```
 
 # Default modules
-- `reminder` - send reminder to user after specified time. [See more](docs/reminders.md)
-- `permissions` - permissions management system. [See more](docs/permissions.md)
 - `bridge` - copy attachments from one channel to another.
-- `math` - basic math calculator. [See more](docs/math.md)
 - `egg` - egg of course.
+- `math` - basic math calculator. [See more](docs/math.md)
+- `permissions` - permissions management system. [See more](docs/permissions.md)
+- `reminder` - send reminder to user after specified time. [See more](docs/reminder.md)
 
 
-## Still TODO:
-- Grow the api
-- Clean up the code
-- Presence management (maybe)
-- Client like events management system
-- Create a better README.md
-- And more!
+# Future plans
+My goal was to create something like environment for module based selfbot. Over time maybe I will add more modules and features like client like data manager. I'll maintain this project as long as I can but discord likes to change api in a rather strange way. As long as I can, I'll try to keep this project up to date.
 
 
 

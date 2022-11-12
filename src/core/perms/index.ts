@@ -73,9 +73,9 @@ export default class Permissions {
       case "MESSAGE_UPDATE":
       case "MESSAGE_DELETE":
       case "MESSAGE_DELETE_BULK":
-        guild = payload.guild_id;
-        channel = payload.channel_id;
-        user = payload.author.id;
+        guild = payload.guild_id || 0;
+        channel = payload.channel_id || 0;
+        user = payload.author.id || 0;
         break;
 
       // I will add more events later
