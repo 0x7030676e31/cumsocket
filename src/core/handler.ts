@@ -19,7 +19,7 @@ export default class Handler extends EventEmitter {
 
   constructor(token: string) {
     super();
-    this.log("Gateway", "Connecting...");
+    this.log("Gateway", "Starting up...");
     this.token = token;
     this.connect();
   }
@@ -98,7 +98,7 @@ export default class Handler extends EventEmitter {
 
     const ws = this._ws = new WebSocket(this.url);
 
-    ws.once("open", () => ws.send(this.getInitPayload(re)));
+    ws.once("open", () => { ws.send(this.getInitPayload(re)); this.log("Gateway", "Connection established")} );
     ws.once("close", this.onClose.bind(this));
     ws.on("message", this.onMessage.bind(this));
   }
@@ -131,7 +131,7 @@ export default class Handler extends EventEmitter {
     uptime -= minutes * 60;
 
     const seconds: number = uptime;
-    const time = `${hours ? `${hours}h ` : ""}${minutes ? `${minutes}m ` : ""}${seconds}s`;
+    const time = `${hours ? `${hours}h ` : ""}${minutes ? `${minutes}m ` : ""}${seconds.toFixed(3)}s`;
 
     // console.log(`\x1b[35m(${time}) \x1b[34m[${header}] \x1b[36m${msg}\x1b[0m`);
     console.log(`(${time}) [${header}] ${msg}`);

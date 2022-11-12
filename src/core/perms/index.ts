@@ -20,6 +20,7 @@ export default class Permissions {
   
   private meta: meta = { user: "", channel: "", message: "" };
 
+
   // load the permissions
   public async init(ctx: Core) {
     await ctx.dbQuery("CREATE TABLE IF NOT EXISTS permsMain (id serial, module varchar(16), state boolean);");
@@ -40,7 +41,6 @@ export default class Permissions {
 
     // process the permissions
     permsMain.forEach(v => {
-      if (!ctx.ids.includes(v.module)) return;
       this.refers.push([v.module, v.id]);
       this.perms[v.module] = { state: v.state, rules: [] };
       modulesCount++;
@@ -122,22 +122,22 @@ export default class Permissions {
           const idMaxLength = Math.max(...this.refers.map(v => v[0].length));
           const rulesMaxLength = Math.max(...Object.values(this.perms).map(v => v.rules.length.toString().length));
           
-          const content = this.refers.map(([name, idx]) => `${idx}.${" ".repeat(numMaxLength - idx.toString().length)} | ${name}${" ".repeat(idMaxLength - name.length)} | ${this.perms[name].state ? "allow" : "block"} | ${this.perms[name].rules.length}${" ".repeat(rulesMaxLength - this.perms[name].rules.length.toString().length)}`).join("\n");
+          const content = this.refers.map(([name, idx]) => `${idx}.${" ".repeat(numMaxLength - idx.toString().length)} | ${name}${" ".repeat(idMaxLength - name.length)} | ${this.perms[name].state ? "allow" : "block"} | ${this.perms[name].rules.length}${" ".repeat(rulesMaxLength - this.perms[name].rules.length.toString().length)}${ids.includes(name) ? "" : "  (unused)"}`).join("\n");
           this.respond(`\`\`\`\n${content}\n\`\`\``);
           break;
 
-        // TO CHANGE
         // remove all unused modules from the database
-        // case "--cleanup":
-        //   const unused = this.refers.filter(([name]) => !ids.includes(name));
-        //   if (unused.length) {
-        //     await this.ctx.dbQuery("DELETE FROM permsMain WHERE id IN ($1);", unused.map(v => v[1]).join(", "));
-        //     await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent IN ($1);", unused.map(v => v[1]).join(", "));
-        //   }
+        case "--cleanup":
+          const unused = this.refers.filter(([name]) => !ids.includes(name));
+          if (unused.length) {
+            await this.ctx.dbQuery("DELETE FROM permsMain WHERE id IN ($1);", unused.map(v => v[1]).join(", "));
+            await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent IN ($1);", unused.map(v => v[1]).join(", "));
+          }
           
-        //   // TODO: reorder the ids in permsMain and permsRules (not necessary, but nice to have)
-        //   this.respond(`Successfully cleaned up ${unused.length} unused modules.`);
-        //   break; 
+          // TODO: reorder the ids in permsMain and permsRules (not necessary, but nice to have)
+          
+          this.respond(`Successfully removed ${unused.length} unused modules.`);
+          break; 
 
         // deletes everything from the database and insert fresh data
         case "--clearall":

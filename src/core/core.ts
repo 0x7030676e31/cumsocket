@@ -88,10 +88,12 @@ export default class Core extends Handler {
     modules.forEach(v => v.init?.(this));
   }
 
+  // send a query to the database
   public async dbQuery(query: string, ...args: any[]): Promise<QueryResult<any>> {
     return await this._db.query(query.replaceAll(/\$(\d+)/g, (_, i) => `${args[+i - 1]}` ?? "null"));
   }
 
+  // get all active module ids
   public get ids(): string[] {
     return structuredClone(this._ids);
   }

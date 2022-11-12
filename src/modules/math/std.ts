@@ -48,6 +48,7 @@ class Std {
     // gamma: [1, 1, (num) => ],
   };
 
+  // only for functions
   private static readonly alternatives: { [key: string]: string[] } = {
     rad: ["radian", "radians"],
     deg: ["degree", "degrees"],

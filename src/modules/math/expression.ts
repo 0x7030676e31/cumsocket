@@ -215,7 +215,7 @@ export default class Lexer {
     // remove "+" or "-" at the beginning
     if (tokens[0].type === "operator") {
       if (tokens.length === 1) return null;
-      if (tokens[0].value === "-") (tokens[1] as Unit).value.neg();
+      if (tokens[0].value === "-") tokens[1].value = (tokens[1] as Unit).value.neg();
       else if (tokens[0].value !== "+") return null;
 
       tokens.shift();
@@ -259,13 +259,13 @@ export default class Lexer {
 
       let result: Decimal;
       switch (op) {
-        case "+": result = a.add(b); break;
-        case "-": result = a.sub(b); break;
-        case "*": result = a.mul(b); break;
-        case "/": result = a.div(b); break;
+        case "+":  result = a.add(b);      break;
+        case "-":  result = a.sub(b);      break;
+        case "*":  result = a.mul(b);      break;
+        case "/":  result = a.div(b);      break;
         case "//": result = a.divToInt(b); break;
-        case "%": result = a.mod(b); break;
-        case "^": result = a.pow(b); break;
+        case "%":  result = a.mod(b);      break;
+        case "^":  result = a.pow(b);      break;
       }
 
       tokens.splice(idx - 1, 3, { type: "number", value: result! });
