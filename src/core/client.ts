@@ -13,7 +13,6 @@ export default class Client {
 
   // TODO: add more methods
   public async dispatch(payload: any, event: string): Promise<any> {
-    console.log(event)
     switch (event.toLowerCase().replaceAll("_", " ")) {
       case "ready": {
         this._users = payload.users;
