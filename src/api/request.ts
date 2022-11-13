@@ -28,12 +28,16 @@ class Api {
 
   // generate new header
   private getHeader() {
-    return Object.assign(structuredClone(this._headers), { Authorization: process.env.TOKEN! });
+    return Object.assign(structuredClone(this._headers), { Authorization: process.env.TOKEN!, Cookie: this.getCookies() });
   }
 
   // generate nonce (for message confirmation)
   private getNonce(): string {
     return ((BigInt(new Date().getTime()) - 1420070400000n) << 22n).toString();
+  }
+
+  private getCookies() {
+    return "";
   }
 
   // execute the request (all networking stuff)

@@ -13,6 +13,7 @@ export default class Handler extends EventEmitter {
   private _seq: number = 0;
   private _sessionId: string = "";
 
+  // TODO
   private readonly _badCodes: number[] = [];
 
   public readonly initDate: number = Date.now();
@@ -116,8 +117,12 @@ export default class Handler extends EventEmitter {
     process.exit(0);
   }
 
-  private async voiceStateUpdate(payload: VoiceState): Promise<void> {
+  public async voiceStateUpdate(payload: VoiceState): Promise<void> {
     this._ws.send(JSON.stringify({ op: 4, d: payload }));
+  }
+
+  public async dmConfirmation(id: string): Promise<void> {
+    this._ws.send(JSON.stringify({ op: 13, d: { channel_id: id } }));
   }
 
   public log(header: string, msg: string): void {

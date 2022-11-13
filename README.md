@@ -11,6 +11,7 @@ Cumsocket is a "simple" Discord module based selfbot written in TypeScript that 
 - Database support
 - Almost undetectable
 - Rate limit handling
+- Client like data handling
 
 # Usage
 If you really want to use this bot, follow these steps:
@@ -59,9 +60,9 @@ export default class MyModule {
 # Default modules
 - `bridge` - copy attachments from one channel to another.
 - `egg` - egg of course.
-- `math` - basic math calculator. [See more](docs/math.md)
-- `permissions` - permissions management system. [See more](docs/permissions.md)
-- `reminder` - send reminder to user after specified time. [See more](docs/reminder.md)
+- `math` - basic math calculator.
+- `permissions` - permissions management system.
+- `reminder` - send reminder to user after specified time.
 
 
 # Future plans

@@ -11,7 +11,7 @@ export default class Bridge {
   private _webhook: [string, string] = ["", ""];
 
   public async init(ctx: Core): Promise<void> {
-    this._from = process.env.bridge_from!.split(/\s*,\s*/);
+    this._from = process.env.bridge_from!.split(/\s+/);
     this._webhook = [process.env.bridge_webhook_id!, process.env.bridge_webhook_token!];
   
   }

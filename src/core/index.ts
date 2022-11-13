@@ -14,7 +14,7 @@ export default class Core extends Handler {
   private _ids: string[] = [];
   private _perms!: Permissions;
   private _db!: dbClient;
-  public readonly client: Client = new Client();
+  public readonly client: Client = new Client(this);
   public readonly api: typeof api = api;
 
   constructor(token: string) {
@@ -41,7 +41,7 @@ export default class Core extends Handler {
 
   // handle an incoming message payload
   private async dispatch(data: any, event: string): Promise<void> {
-    // this._client.dispatch(data, event);
+    this.client.dispatch(data, event);
     this._eventListeners[event]?.forEach(v => this._perms.process(...v, data, event));
   }
 
