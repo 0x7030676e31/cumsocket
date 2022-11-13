@@ -26,8 +26,6 @@ export default class Reminder {
 
   private reminders: reminder[] = [];
 
-  public ignore = true;
-
   public async init(ctx: Core): Promise<void> {
     await ctx.dbQuery("CREATE TABLE IF NOT EXISTS reminders (id serial, author bigint, channel bigint, guild bigint, message bigint, time integer);");
     const data = await ctx.dbQuery("SELECT * FROM reminders;");
@@ -138,6 +136,7 @@ export default class Reminder {
   // send a DM to a user
   private async dm(user: string, content: string): Promise<void> {
     const target = await this.ctx.client.getDmByUser(user);
+    console.log(target);
 
     await this.ctx.api.messages.send(target.id  , {
       content,
