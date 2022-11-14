@@ -47,18 +47,18 @@ export default class Client {
     return this.fetchUser(id);
   }
 
-  public async getPrivateChannelByUser(user: string): Promise<DmChannel> {
+  public async getPrivateChannelByUser(user: string): Promise<DmChannel | undefined> {
     const channel = this._dms.find((c) => c.recipient_ids.includes(user));
     if (channel) return channel;
     
-    return this.openDm(user);
+    return undefined;
   }
 
-  public async getDmByUser(user: string): Promise<Dm> {
+  public async getDmByUser(user: string): Promise<Dm | undefined> {
     const channel = this._dms.find((c) => c.type === 1 && c.recipient_ids.includes(user));
     if (channel) return structuredClone(channel) as Dm;
 
-    return this.openDm(user);
+    return undefined;
   }
 
   public async getGroupsByUser(user: string): Promise<Group[]> {
@@ -72,16 +72,6 @@ export default class Client {
     
     this._users.push(baseUser);
     return baseUser;
-  }
-
-  private async openDm(user: string): Promise<Dm> {
-    const channel = await api.users.getChannel(user);
-    this.ctx.dmConfirmation(channel.id);
-
-    const dm = { type: 1, recipient_ids: [ channel.recipients[0].id ], last_message_id: channel.last_message_id, id: channel.id, flags: channel.flags } as Dm;
-
-    this._dms.push(dm);
-    return structuredClone(dm);
   }
 }
 
