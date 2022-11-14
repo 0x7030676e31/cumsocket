@@ -62,7 +62,6 @@ export default class MyModule {
 - `egg` - egg of course.
 - `math` - basic math calculator.
 - `permissions` - permissions management system.
-- `reminder` - send reminder to user after specified time.
 
 
 # Future plans

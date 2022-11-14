@@ -3,6 +3,7 @@
 build/
 node_modules/
 ws/
+rip/
 
 .env
 cumsocket.code-workspace
