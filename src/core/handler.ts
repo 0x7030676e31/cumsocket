@@ -14,7 +14,7 @@ export default class Handler extends EventEmitter {
   private _sessionId: string = "";
 
   // TODO
-  private readonly _badCodes: number[] = [];
+  private readonly _badCodes: number[] = [ 4004 ];
 
   public readonly initDate: number = Date.now();
 

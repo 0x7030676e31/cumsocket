@@ -57,7 +57,7 @@ class Std {
   };
 
   public readonly modifiers: { [key: string]: (value: Decimal) => Decimal } = {
-    "°": (x: Decimal) => x.mul(180).div(Std.constants.pi),
+    "°": (x: Decimal) => x.mul(Std.constants.pi).div(180),
     // I will add factorials later (and maybe some other modifiers)
   };
 

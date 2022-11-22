@@ -165,7 +165,7 @@ export default class Lexer {
 
         // used for separate function arguments
         case "comma":
-          if (this.asFunction.at(-1) === (this.depth) || lastToken !== TokenType.Number) return null;
+          if (this.asFunction.at(-1) !== this.depth || lastToken !== TokenType.Number) return null;
           this.ref.push({ type: "comma" });
           this.lastToken = TokenType.Comma;
           break;
@@ -196,7 +196,7 @@ export default class Lexer {
     while (true) {
       const idx = tokens.findIndex(t => t.type === "comma");
       if (idx === -1) break;
-      args.push(tokens.splice(0, idx).slice(0, -1));
+      args.push(tokens.splice(0, idx + 1).slice(0, -1));
     }
     if (tokens.length) args.push(tokens);
 
@@ -222,6 +222,18 @@ export default class Lexer {
     }
 
     if (!tokens.length) return null;
+
+    // check for bracketless function correctness
+    const indexes = tokens.map((t, i, s) => s[i - 1]?.type === "function" && t.type === "number" ? i : -1).filter(i => i !== -1);
+    for (const i of indexes) {
+      const funcToken = tokens[i - 1] as any;
+      const func = Std.getFunction(funcToken.value);
+  
+      if (!func || func[0] !== 1) return null;
+    }
+
+    // evalueate bracketless functions
+    indexes.reverse().forEach(i => tokens.splice(i - 1, 2, { type: "number", value: Std.getFunction(tokens[i - 1].value as string)![2](tokens[i].value as Decimal) }));
 
     // negate all numbers that have a - before them
     tokens.forEach((t, i, s) => s[i - 1]?.type === "operator" && t.value === "-" && s[i + 1]?.type === "number" ? s.splice(i, 2, { type: "number", value: (s[i + 1] as Unit).value.neg() }) : 0)
@@ -249,7 +261,7 @@ export default class Lexer {
       
       if (!found) break;
     }
-    
+
     return (tokens[0] as Unit).value;
 
 
