@@ -8,8 +8,8 @@
       "browser": "Firefox",
       "device": "",
       "system_locale": "en-US",
-      "browser_user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:105.0) Gecko/20100101 Firefox/105.0",
-      "browser_version": "105.0",
+      "browser_user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0",
+      "browser_version": "107.0",
       "os_version": "",
       "referrer": "https://www.google.com/",
       "referring_domain": "www.google.com",
@@ -17,7 +17,7 @@
       "referrer_current": "",
       "referring_domain_current": "",
       "release_channel": "stable",
-      "client_build_number": 158183,
+      "client_build_number": 160179,
       "client_event_source": null
     },
     "presence": {

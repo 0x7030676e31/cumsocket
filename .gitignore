@@ -2,7 +2,6 @@
 .VSCodeCounter/
 build/
 node_modules/
-ws/
 rip/
 
 .env
