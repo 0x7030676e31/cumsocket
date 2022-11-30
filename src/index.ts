@@ -1,6 +1,7 @@
-import Core from "./core";
 import { config } from "dotenv";
-config();
+import Core from "./core";
 
-if (!process.env.TOKEN) throw new Error("No token provided");
-new Core(process.env.TOKEN!);
+config();
+if (!process.env.TOKEN) throw new Error("Cannot find 'TOKEN' in .env file.");
+
+new Core();

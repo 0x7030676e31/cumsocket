@@ -1,9 +1,10 @@
-import WebSocket from "ws";
-import EventEmitter, { callback } from "./emitter";
+import DispatchPayload, * as events from "./mapping";
+import { EventEmitter } from "events";
 import op2 from "../op2.json";
+import WebSocket from "ws";
 
 type payload = { op: number, d?: any, s?: number, t?: string };
-export default class Handler extends EventEmitter {
+class Handler extends EventEmitter {
   protected readonly url = "wss://gateway.discord.gg/?encoding=json&v=10";
   protected readonly token: string;
 
@@ -25,23 +26,6 @@ export default class Handler extends EventEmitter {
     this.connect();
   }
 
-  public on(event: "open", callback: (re?: boolean) => any): this;
-  public on(event: "close", callback: (code?: number) => any): this;
-  public on(event: "exit", callback: () => any): this;
-  public on(event: "heartbeat", callback: (seq?: number) => any): this;
-  public on(event: "ack", callback: (seq?: number) => any): this;
-  public on(event: "dispatch", callback: (payload: any, event: string) => any): this;
-  public on(event: string, callback: callback): this { return super.on(event, callback); }
-
-  public once(event: "open", callback: (re?: boolean) => any): this;
-  public once(event: "close", callback: (code?: number) => any): this;
-  public once(event: "exit", callback: () => any): this;
-  public once(event: "heartbeat", callback: (seq?: number) => any): this;
-  public once(event: "ack", callback: (seq?: number) => any): this;
-  public once(event: "dispatch", callback: (payload: any, event: string) => any): this;
-  public once(event: string, callback: callback): this { return super.once(event, callback); }
-
-
   // handle the websocket opening event
   private async onOpen(re: boolean): Promise<void> {
     this.emit("open", re);
@@ -57,9 +41,9 @@ export default class Handler extends EventEmitter {
       // classic dispatch
       case 0:
         this._seq++;
-        this.emit("dispatch", d, t);
-        if (t === "READY") return this._sessionId = d.session_id;
-        if (t === "RESUMED") return this.log("Gateway", "Session resumed successfully.");
+        this.emit("dispatch", d, t!);
+        if (t === "READY") return this._sessionId = d.session_id && this.emit("ready", d);
+        if (t === "RESUMED") return this.emit("resume", d) && this.log("Gateway", "Session resumed successfully.");
         break;
 
       // client should send a heartbeat rn
@@ -186,3 +170,33 @@ interface VoiceState {
   self_deaf: boolean;
   self_video: boolean;
 }
+
+type Hello = { heartbeat_interval: number };
+type AsyncOr = Promise<void> | void;
+interface Events {
+  open: (reconnecting: boolean) => AsyncOr;
+  close: (code: number) => AsyncOr;
+  ready: (data: events.READY) => AsyncOr;
+  dispatch: (data: DispatchPayload, event: string) => AsyncOr;
+  heartbeat: (seq: number) => AsyncOr;
+  ack: (seq: number) => AsyncOr;
+  hello: (data: Hello) => AsyncOr;
+  resume: (seq: number) => AsyncOr;
+}
+
+declare interface Handler {
+  addListener<U extends keyof Events>(event: U, listener: Events[U]): this;
+  on<U extends keyof Events>(event: U, listener: Events[U]): this;
+  once<U extends keyof Events>(event: U, listener: Events[U]): this;
+  removeListener<U extends keyof Events>(event: U, listener: Events[U]): this;
+  off<U extends keyof Events>(event: U, listener: Events[U]): this;
+  removeAllListeners<U extends keyof Events>(event?: U): this;
+  listeners<U extends keyof Events>(event: U): Events[U][];
+  rawListeners<U extends keyof Events>(event: U): Events[U][];
+  emit<U extends keyof Events>(event: U, ...args: Parameters<Events[U]>): boolean;
+  listenerCount<U extends keyof Events>(event: U): number;
+  prependListener<U extends keyof Events>(event: U, listener: Events[U]): this;
+  prependOnceListener<U extends keyof Events>(event: U, listener: Events[U]): this;
+}
+
+export default Handler;

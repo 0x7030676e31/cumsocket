@@ -69,7 +69,7 @@ class Std {
     return Boolean(Std.constants[constant]);
   }
 
-public getFunction(func: string): [number, number, (...args: Decimal[]) => Decimal] {
+  public getFunction(func: string): [number, number, (...args: Decimal[]) => Decimal] {
     return Std.functions.find(v => v[0].test(func))?.slice(1) as any;
   }
 

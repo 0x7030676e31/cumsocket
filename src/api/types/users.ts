@@ -48,12 +48,12 @@ export interface Application {
 }
 
 export interface Author {
-  id: string;
   username: string;
-  avatar: string | null;
-  avatar_decoration: string | null;
+  public_flags?: number;
+  id: string;
   discriminator: string;
-  public_flags: number;
+  avatar_decoration?: null | string;
+  avatar: string | null;
   bot?: boolean;
 }
 

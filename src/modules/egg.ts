@@ -1,48 +1,58 @@
 import Core, { types } from "../core";
 
 const EGGS = ["🥚", "🍳"];
-const REG = /egg|🥚|🍳/i;
+const REG = /egg|🥚|🍳/i; 
 
 export default class Egg {
   public readonly ctx!: Core;
-  public readonly id = "egg";
-  public readonly env = ["rare_egg_chance"];
-
-  private self!: string;
-
-  @Core.listen("READY")
-  public async onReady(data: any): Promise<void> {
-    this.self = data.user.id;
-  }
-
-  // react to messages with an egg emoji
-  @Core.listen("MESSAGE_CREATE")
-  public async onMessageCreate(msg: types.messages.Message): Promise<void> {
-    if (!REG.test(msg.content) || msg.author.id === this.self) return;
+  public readonly id: string = "egg";
+  public readonly env: string[] = ["rare_egg_chance"];
   
-    this.ctx.api.messages.react(msg.channel_id, msg.id, this.getEgg());
+  private self!: string;
+  private chance!: number;
+
+  public async load(ctx: Core): Promise<void> {
+    this.self = ctx.getSelfId();
+    this.chance = +process.env.rare_egg_chance!
   }
 
-  // check if a message has an egg emoji or contains egg word and delete / add emoji
-  @Core.listen("MESSAGE_EDIT")
-  public async onMessageEdit(msg: types.messages.Message): Promise<void> {
-    if (msg.author.id === this.self) return;
+  @Core.listen("MESSAGE_CREATE")
+  public async onMessage(msg: types.MESSAGE_CREATE): Promise<void> {
+    if (msg.author.id === this.self || !REG.test(msg.content)) return;
     
-    const hasEggEmoji = await this.hasEgg(msg.channel_id, msg.id);
-    const hasEggText = REG.test(msg.content);
-
-    if (hasEggEmoji && !hasEggText) this.ctx.api.messages.reactionDelete(msg.channel_id, msg.id, hasEggEmoji);
-    else if (!hasEggEmoji && hasEggText) this.ctx.api.messages.react(msg.channel_id, msg.id, this.getEgg());
+    // add a random egg reaction
+    this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, this.getEgg());
   }
 
-  // check if a message has an egg emoji
-  private async hasEgg(channel: string, message: string): Promise<null | string> {
-    const messages = await this.ctx.api.messages.get(channel, { limit: 1, around: message });
-    return messages[0].reactions?.find(r => EGGS.includes(r.emoji.name))?.emoji.name ?? null;
+  @Core.listen("MESSAGE_UPDATE")
+  public async onMessageUpdate(msg: types.MESSAGE_UPDATE): Promise<any> {
+    if (msg.author?.id === this.self) return;
+
+    // check if the message has an egg reaction and if content matches egg pattern
+    const hasEggContent = REG.test(msg.content ?? "");
+    const hasEggReaction = await this.hasEgg(msg.channel_id, msg.id);
+  
+    if (hasEggReaction === null) return;
+
+    // add/remove egg reaction depending on content and reactions
+    if (hasEggContent && hasEggReaction === false) return this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, this.getEgg());
+    if (!hasEggContent && hasEggReaction !== false) return this.ctx.api.messages.reactionDelete(msg.channel_id, msg.id, hasEggReaction);
   }
 
-  // get a random egg emoji
+  // check if a message has an egg reaction
+  private async hasEgg(channel: string, id: string): Promise<false | string | null> {
+    const messages = await this.ctx.api.messages.get(channel, { around: id, limit: 1 }).unwrap();
+    if (!messages) return null;
+    
+    const message = messages[0];
+    if (!message.reactions) return false;
+
+    // find the egg reaction
+    return message.reactions.find(v => v.me && EGGS.includes(v.emoji.name))?.emoji.name ?? false;
+  }
+
+  // generate a random egg
   private getEgg(): string {
-    return EGGS[Math.random() > +process.env.rare_egg_chance! ? 0 : 1];
+    return EGGS[Math.random() > this.chance ? 0 : 1];
   }
 }

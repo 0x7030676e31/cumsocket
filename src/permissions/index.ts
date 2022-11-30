@@ -1,4 +1,4 @@
-import Core, { types } from "..";
+import Core, { listeners, callback, types } from "../core";
 import Expression from "./expression";
 
 type dbMain = { id: number, module: string, state: boolean }[];
@@ -10,27 +10,38 @@ const CMD = /^[?!$]\s*perms\s+((?<id>[a-z]{1,16})\s+(?<method>list|add\s+(?<add_
 
 export default class Permissions {
   public readonly ctx!: Core;
-  public readonly id = "permissions"; 
+  public readonly id = "permissions";
+  public readonly env = ["DATABASE_URL"];
+  
+  private listeners: listeners = {};
 
   private perms: perms = {};
+
+  // [id, parent]
   private refers: [string, number][] = [];
 
-  private queue: { id: string; callback: (data: any, events: string) => Promise<void> | void; payload: any; event: string }[] = [];
-  private ready: boolean = false;
-  
+  private queue: { id: string; callback: callback; payload: any; event: string }[] = [];
+  private isReady: boolean = false;
+
   private meta: meta = { user: "", channel: "", message: "" };
 
+  public async load(ctx: Core): Promise<void> {
+    // register listeners
+    ctx.on("dispatch", this.dispatch.bind(this));
+  
+    // 
+    // load permissions from database
+    // 
 
-  // load the permissions
-  public async init(ctx: Core) {
+    // create tables if not exists
     await ctx.dbQuery("CREATE TABLE IF NOT EXISTS permsMain (id serial, module varchar(16), state boolean);");
     await ctx.dbQuery("CREATE TABLE IF NOT EXISTS permsRules (parent integer, state boolean, prior smallint, expr text);");
     
-    const permsMain: dbMain = (await ctx.dbQuery("SELECT * FROM permsMain;")).rows;
-    const permsRules: dbRules = (await ctx.dbQuery("SELECT * FROM permsRules;")).rows;
-
+    const permsMain: dbMain = (await ctx.dbQuery("SELECT * FROM permsMain;"))!.rows;
+    const permsRules: dbRules = (await ctx.dbQuery("SELECT * FROM permsRules;"))!.rows;
+    
     // insert missing modules
-    const missing = ctx.ids.filter(id => !permsMain.some(v => v.module === id));
+    const missing = ctx.idList().filter(id => !permsMain.some(v => v.module === id));
     if (missing.length) ctx.dbQuery("INSERT INTO permsMain (module, state) VALUES $1;", missing.map(v => `('${v}', true)`).join(", "));
 
     const max = Math.max(...permsMain.map(v => v.id), 0);
@@ -53,35 +64,42 @@ export default class Permissions {
     });
 
     ctx.log("Permissions", `Successfully loaded ${rulesCount} rules for ${modulesCount - missing.length} modules.`);
-    
-    // process the queue
-    this.ready = true;
-    this.queue.forEach(v => this.process(v.id, v.callback, v.payload, v.event));
   }
 
-  // Process event and execute callback if all conditions are met
-  public async process(id: string, callback: (data: any, events: string) => Promise<void> | void, payload: any, event: string): Promise<void | any> {
-    if (!this.ready) return this.queue.push({ id, callback, payload, event });
+  public async ready(ctx: Core): Promise<void> {
+    this.listeners = ctx.listenerList();
+  
+    // process the queue
+    this.isReady = true;
+    this.queue.forEach(v => this.process(v.id, v.callback, v.payload, v.event));  
+  }
+
+  // dispatch the events
+  public async dispatch(payload: any, event: string): Promise<void> {
+    this.listeners[event]?.forEach(([id, callback]) => this.process(id, callback, payload, event));
+  }
+
+  // process the upcoming events
+  private async process(id: string, callback: callback, payload: any, event: string): Promise<any> {
+    if (!this.isReady) return this.queue.push({ id, callback, payload, event });
     if (!this.perms[id]) return callback(payload, event);
 
-    // extract data from payload
-    let guild: string;
-    let channel: string;
+    // extract data from payload    // TODO: add more events
+    let guild: string = '0';
+    let channel: string = "0";
     let user: string;
     switch (event) {
       case "MESSAGE_CREATE":
       case "MESSAGE_UPDATE":
       case "MESSAGE_DELETE":
       case "MESSAGE_DELETE_BULK":
-        guild = payload.guild_id || 0;
-        channel = payload.channel_id || 0;
-        user = payload.author.id || 0;
+        guild = payload.guild_id || "0";
+        channel = payload.channel_id || "0";
+        user = payload.author?.id || "0";
         break;
 
-      // I will add more events later
-
       default:
-        // console.log(`Executing callback for ${event} event without permissions for id ${id}, not supported yet`);
+        this.ctx.log("Permissions", `Executing callback for ${event} event without permissions for id ${id}, not supported yet`);
         callback(payload, event);
         return;
     }
@@ -99,15 +117,15 @@ export default class Permissions {
     if (perms.state) callback(payload, event);
   }
 
-  // handle a command
+  // handle the commands
   @Core.listen("MESSAGE_CREATE")
-  public async onMessageCreate(msg: types.messages.Message): Promise<void> {
+  public async onMessageCreate(msg: types.MESSAGE_CREATE): Promise<void> {
     const match = CMD.exec(msg.content.toLowerCase());
     if (!match) return;
 
     // save the meta data
     const groups = match.groups!;
-    const ids = this.ctx.ids;
+    const ids = this.ctx.idList();
     this.meta.user = msg.author.id;
     this.meta.channel = msg.channel_id;
     this.meta.guild = msg.guild_id;
@@ -129,6 +147,7 @@ export default class Permissions {
         // remove all unused modules from the database
         case "--cleanup":
           const unused = this.refers.filter(([name]) => !ids.includes(name));
+          this.refers = this.refers.filter(([name]) => ids.includes(name));
           if (unused.length) {
             await this.ctx.dbQuery("DELETE FROM permsMain WHERE id IN ($1);", unused.map(v => v[1]).join(", "));
             await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent IN ($1);", unused.map(v => v[1]).join(", "));
@@ -288,7 +307,7 @@ export default class Permissions {
 
   // repond to the message
   private async respond(content: string): Promise<void> {
-    this.ctx.api.messages.respondWithContent(this.meta.channel, this.meta.message, content);
+    this.ctx.api.messages.respond(this.meta.channel, this.meta.message, content);
   }
 }
 

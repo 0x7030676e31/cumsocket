@@ -22,10 +22,10 @@ enum TokenType {
 export default class Lexer {
   private static readonly rules: [string, RegExp][] = [
     [ "space",     /^\s+/                 ],
-    [ "number",    /^\d+(\.\d+)?/         ],
     [ "number",    /^0x[0-f]+(\.[0-f]+)?/ ],
     [ "number",    /^0o[0-7]+(\.[0-7]+)?/ ],
     [ "number",    /^0b[01]+(\.[01]+)?/   ],
+    [ "number",    /^\d+(\.\d+)?/         ],
     [ "operator",  /^([+*\-%^]|\/{1,2})/  ],
     [ "modifier",  /^(°|!{1,2})/          ],
     [ "function",  /^[a-z]+(?=\()/        ],

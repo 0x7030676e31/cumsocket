@@ -3,6 +3,7 @@ import Lexer from "./lexer";
 export default class Expression extends Lexer {
   public static readonly table: string[] = ["guild", "channel", "user", "&&", "||", "==", "!=", "(", ")"];
 
+  // evaluate an expression
   public exec(vars: Partial<vars>): boolean {
     const expression = this.raw.replaceAll(/guild|channel|user/g, v => vars[v as keyof vars] ?? "-1");
     return eval(expression);

@@ -1,95 +1,90 @@
-import Api from "./request";
+import { Network, Request, Response } from "./net";
 import { messages, users } from "./types";
 
-export async function send(channel: string, payload: messages.SendPayload): Promise<messages.Message> {
-  return await Api.fetch(`channels/${channel}/messages`, {
-    path: { channels: channel },
-    endpoint: "messages",
-    body: payload,
-    nonce: true,
-  });
+export function send(channel_id: string, payload: messages.SendPayload): Response<messages.Message> {
+  return Network.push(new Request(`channels/${channel_id}/messages`)
+    .useDefaultHeaders()
+    .addNonce()
+    .addBody(payload)
+  );
 }
 
-export async function respondWithContent(channel: string, message: string, content: string, mention: boolean = false): Promise<messages.Message> {
-  return await Api.fetch(`channels/${channel}/messages`, {
-    path: { channels: channel },
-    endpoint: "messages",
-    body: { content, message_reference: { channel_id: channel, message_id: message }, allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: mention }, tts: false },
-    nonce: true,
-  });
+export function respond(channel_id: string, message_id: string, content: string, ping: boolean = false): Response<messages.Message> {
+  return Network.push(new Request(`channels/${channel_id}/messages`)
+    .useDefaultHeaders()
+    .addNonce()
+    .addBody({
+      content,
+      message_reference: { channel_id: channel_id, message_id: message_id },
+      allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: ping },
+      tts: false,
+    })
+  );
 }
 
-export async function edit(channel: string, message: string, payload: messages.SendPayload): Promise<messages.Message> {
-  return await Api.fetch(`channels/${channel}/messages/`, {
-    method: "PATCH",
-    path: { channels: channel, messages: message },
-    endpoint: "messages",
-    body: payload,
-  });
+export function edit(channel_id: string, messsage_id: string, payload: messages.SendPayload): Response<messages.Message> {
+  return Network.push(new Request(`channels/${channel_id}/messages`, `channels/${channel_id}/messages/${messsage_id}`)
+    .setMethod("PATCH")
+    .useDefaultHeaders()
+    .addBody(payload)
+  );
 }
 
-export async function remove(channel: string, message: string): Promise<any> {
-  return await Api.fetch(`channels/${channel}/messages/`, {
-    method: "DELETE",
-    path: { channels: channel, messages: message },
-    endpoint: "messages",
-  });
+export function remove(channel_id: string, message_id: string): Response<undefined> {
+  return Network.push(new Request(`channels/${channel_id}/messages`, `channels/${channel_id}/messages/${message_id}`)
+    .setMethod("DELETE")
+    .useDefaultHeaders()
+  );
 }
 
-export async function get(channel: string, query: messages.GetQuery): Promise<messages.Message[]> {
-  return await Api.fetch(`channels/${channel}/messages`, {
-    method: "GET",
-    path: { channels: channel },
-    endpoint: "messages",
-    query,
-    noBody: true,
-  });
+export function get(channel_id: string, query: messages.GetQuery): Response<messages.Message[]> {
+  return Network.push(new Request(`channels/${channel_id}/messages`)
+    .setMethod("GET")
+    .useDefaultHeaders()
+    .addQuery(query)
+  );
 }
 
-export async function typingIndicator(channel: string): Promise<any> {
-  return await Api.fetch(`channels/${channel}/typing`, {
-    path: { channels: channel },
-    endpoint: "typing",
-  });
+export function typingIndicator(channel_id: string): Response<null> {
+  return Network.push(new Request(`channels/${channel_id}/typing`)
+    .useDefaultHeaders()
+  );
 }
 
-export async function react(channel: string, message: string, emoji: string, query: messages.ReactionQuery = { location: "Message", burst: false }): Promise<void> {
-  return await Api.fetch(`channels/${channel}/reactions`, {
-    method: "PUT",
-    path: { channels: channel, messages: message, reactions: emoji },
-    endpoint: "@me",
-    query,
-  });
+export function reactionAdd(channel_id: string, message_id: string, reaction: string, query: messages.ReactionQuery = { location: "Message", burst: false }): Response<null> {
+  return Network.push(new Request(`channels/${channel_id}/reactions`, `channels/${channel_id}/messages/${message_id}/reactions/${reaction}/@me`)
+    .setMethod("PUT")
+    .useDefaultHeaders()
+    .addQuery(query)
+  );
 }
 
-export async function reactionsGet(channe: string, message: string, emoji: string, query: { limit: number } = { limit: 100 }): Promise<users.Author[]> {
-  return await Api.fetch(`channels/${channe}/reactions`, {
-    method: "GET",
-    path: { channels: channe, messages: message, reactions: emoji },
-    query,
-  });
+export function reactionsGet(channel_id: string, message_id: string, reaction: string, query: { limit: number } = { limit: 100 }): Response<users.Author[]> {
+  return Network.push(new Request(`channels/${channel_id}/reactions`, `channels/${channel_id}/messages/${message_id}/reactions/${reaction}`)
+    .setMethod("GET")
+    .useDefaultHeaders()
+    .addQuery(query)
+  );
 }
 
-export async function reactionDelete(channel: string, message: string, reaction: string, user: string = "@me", query: { location: "Message" } = { location: "Message" }): Promise<void> {
-  return await Api.fetch(`channels/${channel}/reactions`, {
-    method: "DELETE",
-    path: { channels: channel, messages: message, reactions: reaction },
-    endpoint: user,
-    query,
-  });
+export function reactionDelete(channel_id: string, message_id: string, reaction: string, user_id: string = "@me", query: { location: "Message" } = { location: "Message" }): Response<null> {
+  return Network.push(new Request(`channels/${channel_id}/reactions`, `channels/${channel_id}/messages/${message_id}/reactions/${reaction}/${user_id}`)
+    .setMethod("DELETE")
+    .useDefaultHeaders()
+    .addQuery(query)
+  );
 }
 
-export async function reactionDeleteAll(channel: string, message: string): Promise<void> {
-  return await Api.fetch(`channels/${channel}/reactions`, {
-    method: "DELETE",
-    path: { channels: channel, messages: message },
-    endpoint: "reactions",
-  });
+export function reactionDeleteEmoji(channel_id: string, message_id: string, reaction: string): Response<null> {
+  return Network.push(new Request(`channels/${channel_id}/reactions`, `channels/${channel_id}/messages/${message_id}/reactions/${reaction}`)
+    .setMethod("DELETE")
+    .useDefaultHeaders()
+  );
 }
 
-export async function reactionDeleteEmoji(channel: string, message: string, reaction: string): Promise<void> {
-  return await Api.fetch(`channels/${channel}/reactions`, {
-    method: "DELETE",
-    path: { channels: channel, messages: message, reactions: reaction },
-  });
+export function reactionDeleteAll(channel_id: string, message_id: string): Response<null> {
+  return Network.push(new Request(`channels/${channel_id}/reactions`, `channels/${channel_id}/messages/${message_id}/reactions`)
+    .setMethod("DELETE")
+    .useDefaultHeaders()
+  );
 }

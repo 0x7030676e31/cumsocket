@@ -1,29 +1,20 @@
 import { Client as dbClient, QueryResult } from "pg";
-import Permissions from "./perms";
 import Handler from "./handler";
-import Client from "./client";
-import api from "../api";
-export * as types from "../api/types";
-
+import Client from "../client";
+import * as api from "../api";
 import fs from "fs";
 
+export * as types from "./mapping";
+export * as apiTypes from "../api/types";
+
+const err = (msg: string) => { throw new Error(msg); };
+
+export type callback = (data: any, events: string) => Promise<void> | void;
+export type listeners = { [key: string]: [string, callback][] }
 export default class Core extends Handler {
   // [Module class, callback, events to listen to]
   private static _listeners: [Object, (data: any, events: string) => Promise<void> | void, ...string[]][] = [];
-  private _eventListeners: { [key: string]: [string, ((data: any, events: string) => Promise<void> | void)][] } = {};
-  private _ids: string[] = [];
-  private _perms!: Permissions;
-  private _db!: dbClient;
-  public readonly client: Client = new Client(this);
-  public readonly api: typeof api = api;
-
-  constructor(token: string) {
-    super(token);
-    this.loadDB();
-    this.on("dispatch", this.dispatch.bind(this));
-    this.loadModules("modules");
-  }
-
+  
   // (decorator) register a listener
   public static listen(...events: string[]) {
     return (target: Object, _: string | symbol, descriptor: PropertyDescriptor) => {
@@ -32,17 +23,105 @@ export default class Core extends Handler {
     }
   }
 
-  // connect to the database
-  private loadDB(): void {
-    if (!process.env.DATABASE_URL) throw new Error("Cannot connect to database: DATABASE_URL is not set");
-    this._db = new dbClient({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-    this._db.connect();
+
+  // event: [id, callback]
+  private _eventListeners: listeners = {};
+  private _modules: Module[] = [];
+  private _perms: boolean = process.env.PERMS?.toLowerCase() === "true";
+  private _db: dbClient | null = null;
+
+  // utils
+  public readonly api = api;
+  public readonly client = new Client(this);
+
+  constructor() {
+    super(process.env.TOKEN!);
+
+    this.log(`Core`, `Permissions: ${this._perms ? "Enabled" : "Disabled"}`);
+    
+    // init database
+    if (process.env.DATABASE_URL) {
+      this._db = new dbClient({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+      this._db.connect();
+    } else this.log("Core", "No database url provided; database functionality will be disabled.");
+  
+    // init modules
+    this.on("open", this.setup.bind(this));
   }
 
-  // handle an incoming message payload
-  private async dispatch(data: any, event: string): Promise<void> {
-    this.client.dispatch(data, event);
-    this._eventListeners[event]?.forEach(v => this._perms.process(...v, data, event));
+  private async setup(): Promise<void> {
+    // setup client dispatch receiver
+    // this.on("dispatch", this.client.dispatch.bind(this.client)); // TODO
+
+    // setup dispatch reciever    
+    if (this._perms) this.loadModule("permissions/index");
+    else this.on("dispatch", this.dispatch.bind(this));
+    
+    // load modules
+    this.loadModules("modules");
+
+    this._modules.forEach(v => v.ready?.(this));
+  }
+
+  // handle an incoming message
+  private async dispatch(payload: any, event: string): Promise<void> {
+    this._eventListeners[event]?.forEach(([_, callback]) => callback(payload, event));
+  }
+
+  // load all modules
+  protected loadModules(dir: string): void {
+    const path = `${__dirname}/../${dir}`;
+    if (!fs.existsSync(path)) throw new Error(`Failed to load modules: '${path}' does not exist.`);
+
+    const files = fs.readdirSync(path, { withFileTypes: true });
+    const targets: string[] = files.filter(v => !v.isDirectory() && v.name.endsWith(".js")).map(v => `${dir}/${v.name}`);
+    files.filter(v => v.isDirectory()).forEach(v => fs.existsSync(`${path}/${v.name}/index.js`) && targets.push(`${dir}/${v.name}/index.js`));
+    
+    targets.forEach(file => this.loadModule(file));
+  }
+
+  // load a module
+  protected loadModule(file: string): Module | void {
+    const path = `${__dirname}/../${file}${file.endsWith(".js") ? "" : ".js"}`;
+    if (!fs.existsSync(path)) throw new Error(`Failed to load module: '${path}' does not exist.`);
+
+    const module = require(path).default;
+    if (!this.isClass(module)) return;
+
+    // initialize module
+    const instance: Module = new module(this);
+    
+    // validate module
+    if (instance.ignore === true) return;
+    if (!/^[a-zA-Z_]{1,16}$/.test(instance.id)) throw new Error(`Failed to load module: '${instance.id}' is not a valid id.`);
+    if (this.idList().includes(instance.id)) throw new Error(`Failed to load module: '${instance.id}' is already loaded.`);
+
+    // check required environment variables
+    if (instance.env) {
+      if (!(instance.env instanceof Array)) throw new Error(`Failed to load module: '${instance.id}' env is not an array.`);
+      instance.env.forEach(v => process.env[v] === undefined && err(`Warning: '${instance.id}' requires env variable '${v}'`));
+    }
+
+    // add context to module
+    instance.ctx = this;
+
+    // execute ready method
+    instance.load?.(this);
+
+    // register listeners
+    const listeners = Core._listeners.filter(([object]) => object.isPrototypeOf(instance));
+    listeners.forEach(([_, callback, ...events]) => events.forEach(v => {
+      if (!this._eventListeners[v]) this._eventListeners[v] = [];
+      this._eventListeners[v].push([instance.id, callback.bind(instance)]);
+    }));
+
+    // remove used listeners from static list
+    Core._listeners = Core._listeners.filter(([object]) => !object.isPrototypeOf(instance));
+
+    this._modules.push(instance);
+    this.log("Core", `Successfully loaded module '${instance.id}' with ${listeners.length} listeners.`);
+
+    return instance;
   }
 
   // check if object is a class constructor
@@ -50,59 +129,38 @@ export default class Core extends Handler {
     return Boolean(v && typeof v === "function" && v.prototype && !Object.getOwnPropertyDescriptor(v, 'prototype')?.writable);
   }
 
-  // load modules from a specific directory
-  private loadModules(dir: string): void {
-    if (!fs.existsSync(`build/${dir}`)) throw new Error(`Directory ${dir} does not exist`);
-
-    const modules =
-      fs.readdirSync(`build/${dir}`)
-      .filter(v => v.endsWith(".js"))
-      .map(v => require(`../${dir}/${v}`).default)
-      .filter(v => this.isClass(v))
-      .concat([ require("./perms").default ])
-      .map<Module>(v => Object.assign(new v(this), { ctx: this }))
-      .filter(module => {
-        // check if the module has a correct id and if all env variables are set
-        if (module.ignore === true) return false;
-        if (!module.id && typeof module.id !== "string" && !/^[a-zA-Z]{1,16}$/.test(module.id)) throw new Error(`Module ${module.constructor.name} does not have a valid id`);
-        module.env?.forEach(v => {
-          if (!process.env[v]) throw new Error(`Module ${module.constructor.name} requires environment variable ${v}`);
-        });
-        return true;
-      });
-
-    // add ids to list
-    modules.forEach(v => this._ids.push(v.id) && this.log("Core", `Loaded module "${v.id}".`));
-    this._perms = modules.at(-1) as Permissions;
-
-    // load listeners and bind them to the modules
-    Core._listeners.forEach(([target, callback, ...events]) => {
-      const ctx = modules.find(v => target.isPrototypeOf(v));
-      events.forEach(v  => {
-        if (!this._eventListeners[v]) this._eventListeners[v] = [];
-        if (ctx) this._eventListeners[v].push([ctx.id, callback.bind(ctx)]);
-      });
-    });
-
-    // call "ready" event
-    modules.forEach(v => v.init?.(this));
+  // send a request to the database
+  public async dbQuery(query: string, ...args: any[]): Promise<QueryResult<any> | null> {
+    if (!this._db) return null;
+    return this._db.query(query.replaceAll(/\$\d+/g, (v) => args[+v.slice(1) - 1] ?? "NULL"));
   }
 
-  // send a query to the database
-  public async dbQuery(query: string, ...args: any[]): Promise<QueryResult<any>> {
-    return await this._db.query(query.replaceAll(/\$(\d+)/g, (_, i) => `${args[+i - 1]}` ?? "null"));
+  public getModule(id: string): Module | null {
+    return this._modules.find(v => v.id === id) ?? null;
   }
 
-  // get all active module ids
-  public get ids(): string[] {
-    return structuredClone(this._ids);
+  public listenerList(): listeners {
+    return this._eventListeners;
+  }
+
+  public getSelfId(): string {
+    return Buffer.from(this.token.split(".")[0], "base64").toString();
+  }
+
+  // get a list of all module ids
+  public idList(): string[] {
+    return this._modules.map(v => v.id);
   }
 }
 
-interface Module {
-  ctx: Core;
+type Module = _Module & Object;
+interface _Module {
   id: string;
+  ctx: Core;
   env?: string[];
   ignore?: boolean;
-  init?: (ctx: Core) => Promise<void> | void;
+
+  constructor?: (ctx: Core) => Module;
+  ready?: (ctx: Core) => (Promise<void> | void);
+  load?: (ctx: Core) => (Promise<void> | void);
 }
