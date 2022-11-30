@@ -65,8 +65,6 @@ export default class Lexer {
       .replaceAll(/[×⋅∙•]/g, "*")
       .replaceAll(/[÷:]/g, "/")
       .toLowerCase();
-
-    console.log(this.content);
   }
 
   public parse(): Decimal | null {
