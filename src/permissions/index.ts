@@ -6,7 +6,8 @@ type dbRules = { parent: number, state: boolean, prior: number, expr: string}[];
 type perms = { [key: string]: { state: boolean, rules: { state: boolean, prior: number, expr: Expression, temp?: true }[] }};
 type meta = { user: string, channel: string, guild?: string, message: string };
 
-const CMD = /^[?!$]\s*perms\s+((?<id>[a-z]{1,16})\s+(?<method>list|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_priority>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|(remove|delete)\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>allow|block)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))|(?<root>--(list|cleanup|clearall)$))$/;
+const CMD = /^[?!$]\s*perms\s+((?<id>[a-z]{1,16})\s+(?<method>list(?<list_full>\s+full)?|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_prior>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|(remove|delete)\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>allow|block)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))|(?<root>--(list|cleanup|clearall)$))$/;
+const MAX_EXPR_LEN = 100;
 
 export default class Permissions {
   public readonly ctx!: Core;
@@ -149,19 +150,37 @@ export default class Permissions {
           const unused = this.refers.filter(([name]) => !ids.includes(name));
           this.refers = this.refers.filter(([name]) => ids.includes(name));
           if (unused.length) {
-            await this.ctx.dbQuery("DELETE FROM permsMain WHERE id IN ($1);", unused.map(v => v[1]).join(", "));
-            await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent IN ($1);", unused.map(v => v[1]).join(", "));
+            await Promise.all([
+              this.ctx.dbQuery("DELETE FROM permsMain WHERE id IN ($1);", unused.map(v => v[1]).join(", ")),
+              this.ctx.dbQuery("DELETE FROM permsRules WHERE parent IN ($1);", unused.map(v => v[1]).join(", ")),
+            ]);
           }
           
-          // TODO: reorder the ids in permsMain and permsRules (not necessary, but nice to have)
+          // reorder ids in permsMain
+          this.refers = this.refers.sort((a, b) => a[1] - b[1]);
+          const newOrder = this.refers.map((v, i) => [v[1], i + 1]).filter(v => v[0] !== v[1]);
+          this.refers = this.refers.map((v, i) => [v[0], i + 1]);
           
-          this.respond(`Successfully removed ${unused.length} unused modules.`);
+          // update values in the database
+          await Promise.all([
+            this.ctx.dbQuery(newOrder.map(v => `UPDATE permsMain SET id = ${v[1]} WHERE id = ${v[0]};`).join(";")),
+            this.ctx.dbQuery(newOrder.map(v => `UPDATE permsRules SET parent = ${v[1]} WHERE parent = ${v[0]};`).join(";")),
+            this.ctx.dbQuery("ALTER SEQUENCE permsMain_id_seq RESTART WITH $1;", ids.length + 1),
+          ]);
+
+          // update the priority of the rules
+          Object.entries(this.perms).forEach(([key, value]) => value.rules.forEach((_, i) => this.perms[key].rules[i].prior = i));
+          await Promise.all(ids.map(v => this.reorder(v)));
+
+          this.respond(`Successfully removed ${unused.length} unused modules, reordered ${newOrder.length} ids and ${ids.length} modules.`);
           break; 
 
         // deletes everything from the database and insert fresh data
         case "--clearall":
-          await this.ctx.dbQuery("TRUNCATE TABLE permsMain RESTART IDENTITY;");
-          await this.ctx.dbQuery("TRUNCATE TABLE permsRules;");
+          await Promise.all([
+            this.ctx.dbQuery("TRUNCATE TABLE permsMain RESTART IDENTITY;"),
+            this.ctx.dbQuery("TRUNCATE TABLE permsRules;"),
+          ]);
           await this.ctx.dbQuery("INSERT INTO permsMain (module, state) VALUES $1;", ids.map(v => `(${v}, true)`).join(", "));
 
           this.refers = [];
@@ -188,9 +207,10 @@ export default class Permissions {
     switch (action) {
       // display the rules
       case "list":
+        const full = Boolean(groups.list_full);
         const priorMaxLength = Math.max(...perms.rules.map(v => v.prior.toString().length));
-        const content = perms.rules.map(v => `${v.prior}.${" ".repeat(priorMaxLength - v.prior.toString().length)} | ${v.state ? "allow" : "block"} | ${v.expr.stringify()}`).join("\n");
-        this.respond(`Current default state: **${perms.state ? "allow" : "block"}**${content ? `\n\`\`\`\n${content}\n\`\`\`` : ""}`);
+        const content = perms.rules.map(v => `${v.prior}.${" ".repeat(priorMaxLength - v.prior.toString().length)} | ${v.state ? "allow" : "block"} | ${full ? v.expr.stringify() : this.exprStringify(v.expr)}`).join("\n");
+        this.respond(`Current default stfate: **${perms.state ? "allow" : "block"}**${content ? `\n\`\`\`\n${content}\n\`\`\`` : ""}`);
         break;
 
       // add a new rule
@@ -249,7 +269,7 @@ export default class Permissions {
       // reorders the rules
       case "cleanup":
         perms.rules = perms.rules.sort((a, b) => (a.prior < b.prior) as unknown as number);
-        this.ctx.dbQuery("WITH updateData AS (SELECT prior AS tmp, ROW_NUMBER() OVER (ORDER BY prior) rn - 1 FROM permsRules WHERE parent = $1) UPDATE permsRules SET prior = rn FROM updateData WHERE tmp = prior AND parent = $1;", parent);
+        await this.reorder(id);
         this.respond("Successfully cleaned up the rules.");
         break;
 
@@ -303,6 +323,17 @@ export default class Permissions {
     perms.rules.splice(idx === -1 ? perms.rules.length : idx, 0, { state, prior, expr });
 
     await this.ctx.dbQuery("INSERT INTO permsRules (parent, state, prior, expr) VALUES ($1, $2, $3, '$4');", parent, state, prior, expr.encode());
+  }
+
+  private async reorder(id: string) {
+    const parent = this.refers.find(v => v[0] === id)![1];
+    return this.ctx.dbQuery("WITH updateData AS (SELECT prior AS tmp, ROW_NUMBER() OVER (ORDER BY prior) FROM permsRules WHERE parent = $1) UPDATE permsRules SET prior = row_number - 1 FROM updateData WHERE tmp = prior AND parent = $1;", parent);
+  }
+
+  private exprStringify(expr: Expression): string {
+    const str = expr.stringify()
+    if (str.length > MAX_EXPR_LEN) return str.slice(0, MAX_EXPR_LEN - 3) + "...";
+    return str;
   }
 
   // repond to the message

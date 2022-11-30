@@ -22,7 +22,8 @@ export default class Ezvent {
     this.cooldown = +process.env.ezvent_cooldown! * 1000;
 
     // check if last message is sent by bot, if not - send one
-    const message = await ctx.api.messages.get(this.target, { limit: 1 }).ignore();
+    const message = await ctx.api.messages.get(this.target, { limit: 1 }).expect(() => null);
+    if (message === null) return;
     if (message[0].author.id !== this.self) this.send();
   }
 
