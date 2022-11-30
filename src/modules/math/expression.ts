@@ -65,6 +65,8 @@ export default class Lexer {
       .replaceAll(/[×⋅∙•]/g, "*")
       .replaceAll(/[÷:]/g, "/")
       .toLowerCase();
+
+    console.log(this.content);
   }
 
   public parse(): Decimal | null {
@@ -145,7 +147,9 @@ export default class Lexer {
         // close parenthesis, also used for evaluating current-scope expression
         case "close":
           if (this.depth === 0 || lastToken === undefined || [TokenType.Operator, TokenType.Function, TokenType.Comma].includes(lastToken)) return null;
-          if (this.asFunction.at(-1) === this.depth) var asFunction = this.asFunction.pop();
+          
+          let asFunction: number | undefined = undefined;
+          if (this.asFunction.at(-1) === this.depth) asFunction = this.asFunction.pop();
           
           this.depth--;
           this.ref = this.tokens;
