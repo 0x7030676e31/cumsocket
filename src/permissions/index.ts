@@ -6,7 +6,7 @@ type dbRules = { parent: number, state: boolean, prior: number, expr: string}[];
 type perms = { [key: string]: { state: boolean, rules: { state: boolean, prior: number, expr: Expression, temp?: true }[] }};
 type meta = { user: string, channel: string, guild?: string, message: string };
 
-const CMD = /^[?!$]\s*perms\s+((?<id>[a-z]{1,16})\s+(?<method>list(?<list_full>\s+full)?|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_prior>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|(remove|delete)\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>allow|block)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))|(?<root>--(list|cleanup|clearall)$))$/;
+const CMD = /^[?!$]\s*perms\s+((?<id>[a-z]{1,16})\s+(?<method>list(?<list_full>\s+full)?|add\s+(?<add_state>(allow|block)\s+)?(:(?<add_prior>\d+)\s+)?(?<add_expr>[\da-z\s&|()!=]+)|append\s+(?<append_prior>\d+)\s+(?<append_expr>[\s\S]+)|(remove|delete)\s+(?<remove_range>all|\d+\.\.\d+|\.\.\d+|\d+\.\.|\d+)|cleanup|state\s+((?<state_prior>\d+)\s+)?(?<state>allow|block)|move\s+(?<move_from>\d+)\s+to\s+(?<move_to>\d+))|(?<root>--(list|cleanup|clearall)$))$/;
 const MAX_EXPR_LEN = 100;
 
 export default class Permissions {
@@ -219,7 +219,7 @@ export default class Permissions {
         const prior = isNaN(+groups.add_prior) ? Math.max(...perms.rules.map(v => v.prior), -1) + 1 : +groups.add_prior;
         const expr = groups.add_expr
         
-        const expression = new Expression(expr.replaceAll("uthis", this.meta.user).replaceAll("gthis", this.meta.guild ?? "0").replaceAll("cthis", this.meta.channel));
+        const expression = this.convert(expr);
         const error = expression.parse();
 
         if (typeof error === "string") {
@@ -229,6 +229,24 @@ export default class Permissions {
 
         await this.insert(id, state, prior, expression);
         this.respond(`Successfully added rule with state ${state ? "allow" : "block"} and prior ${prior} to module "${id}".`);
+        break;
+
+      case "append":
+        const target = +groups.append_prior;
+        const source = this.perms[id].rules.find(v => v.prior === target); 
+        if (!source) return this.respond(`Rule with prior ${target} does not exist.`);
+
+        const newExpr = this.convert(source.expr.stringify() + groups.append_expr);
+        const err = newExpr.parse();
+
+        if (typeof err === "string") {
+          this.respond(`Failed to parse expression: ${err}`);
+          return;
+        }
+
+        source.expr = newExpr;
+        await this.ctx.dbQuery("UPDATE permsRules SET expr = '$1' WHERE parent = $2 AND prior = $3;", newExpr.stringify(), parent, target);
+        this.respond(`Successfully appended expression to rule with prior ${target}.`);
         break;
 
       // delete a specific range of rules
@@ -336,6 +354,10 @@ export default class Permissions {
     return str;
   }
 
+  private convert(expr: string): Expression {
+    return new Expression(expr.replaceAll("uthis", this.meta.user).replaceAll("gthis", this.meta.guild ?? "0").replaceAll("cthis", this.meta.channel));
+  }
+
   // repond to the message
   private async respond(content: string): Promise<void> {
     this.ctx.api.messages.respond(this.meta.channel, this.meta.message, content);
@@ -348,6 +370,7 @@ export default class Permissions {
 // $ perms egg list
 // $ perms egg add allow :1 guild == 123
 // $ perms egg add block :2 channel == 456
+// $ perms egg append 2 && user == 789
 // $ perms egg remove/delete all
 // $ perms egg remove/delete 50..100
 // $ perms egg remove/delete ..100
