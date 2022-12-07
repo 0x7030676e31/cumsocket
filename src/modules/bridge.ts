@@ -23,7 +23,8 @@ export default class Bridge {
 
     // create list of attachments
     const content = [...urls, ...att].join("\n");
-    
+    if (!content) return;
+
     // send message to webhook
     this.ctx.api.webhooks.execute(...this._webhook, { content, username: msg.author.username, avatar_url: this.getAvatar(msg.author) });
   }

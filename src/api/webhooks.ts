@@ -59,7 +59,7 @@ export function removeWithToken(webhook_id: string, webhook_token: string): Resp
 }
 
 export function execute(webhook_id: string, webhook_token: string, payload: webhooks.ExecutePayload, query?: webhooks.MsgExecuteQuery): Response<messages.Message> {
-  return Network.push(new Request(`webhooks/${webhook_id}`)
+  return Network.push(new Request(`webhooks/${webhook_id}/${webhook_token}`)
     .addQuery(query)
     .addBody(payload)
     .addHeaders({ "Content-Type": "application/json" })
