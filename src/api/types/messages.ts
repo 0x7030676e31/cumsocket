@@ -1,5 +1,5 @@
-import { Author } from "./users";
-import { Embed } from "./embeds";
+import { Author } from "./users.js";
+import { Embed } from "./embeds.js";
 
 export interface Message {
   id: string;

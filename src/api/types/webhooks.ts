@@ -1,8 +1,8 @@
-import { AllowedMentions, Component, Attachment } from "./messages";
-import { Channel } from "./channels";
-import { Guild } from "./guilds";
-import { Embed } from "./embeds";
-import { User } from "./users";
+import { AllowedMentions, Component, Attachment } from "./messages.js";
+import { Channel } from "./channels.js";
+import { Guild } from "./guilds.js";
+import { Embed } from "./embeds.js";
+import { User } from "./users.js";
 
 export interface Webhook {
   id: string;

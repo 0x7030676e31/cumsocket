@@ -1,5 +1,5 @@
-import { Response, ResponseBody } from "./response";
-import { Request, RequestData } from "./request";
+import { Response, ResponseBody } from "./response.js";
+import { Request, RequestData } from "./request.js";
 import fetch from "node-fetch";
 
 const sleep = async (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -80,7 +80,7 @@ class _Network {
     else this.workingBuckets.splice(this.workingBuckets.indexOf(bucket), 1);
 
     // resolve the request
-    next.resolve(request.ok ? { ok: true, data: status === 204 ? undefined : await request.json() } : { ok: false, ...(await request.json()) });
+    next.resolve(request.ok ? { ok: true, data: status === 204 ? undefined : await request.json() } : { ok: false, ...(await request.json() as any) });
   }
 }
 

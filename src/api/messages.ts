@@ -1,5 +1,5 @@
-import { Network, Request, Response } from "./net";
-import { messages, users } from "./types";
+import { Network, Request, Response } from "./net/index.js";
+import { messages, users } from "./types/index.js";
 
 export function send(channel_id: string, payload: messages.SendPayload): Response<messages.Message> {
   return Network.push(new Request(`channels/${channel_id}/messages`)

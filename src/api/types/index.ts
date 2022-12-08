@@ -1,6 +1,6 @@
-export * as messages from "./messages";
-export * as users from "./users";
-export * as embeds from "./embeds";
-export * as channels from "./channels";
-export * as guilds from "./guilds";
-export * as webhooks from "./webhooks";
+export * as messages from "./messages.js";
+export * as users from "./users.js";
+export * as embeds from "./embeds.js";
+export * as channels from "./channels.js";
+export * as guilds from "./guilds.js";
+export * as webhooks from "./webhooks.js";

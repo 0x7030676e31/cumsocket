@@ -1,4 +1,4 @@
-import Decimal from "decimal.js";
+import { Decimal } from "decimal.js";
 
 Decimal.set({ precision: +process.env.math_precision! });
 

@@ -1,6 +1,6 @@
-import Core, { types } from "../../core";
-import Expression from "./expression";
-import Decimal from "decimal.js";
+import Core, { types } from "../../core/index.js";
+import Expression from "./expression.js";
+import { Decimal } from "decimal.js";
 
 export default class Math {
   public readonly ctx!: Core;

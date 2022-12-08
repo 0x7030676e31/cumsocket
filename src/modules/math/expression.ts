@@ -1,5 +1,5 @@
-import Decimal from "decimal.js";
-import Std from "./std";
+import { Decimal } from "decimal.js";
+import Std from "./std.js";
 
 type Tokens = (Token | Tokens)[];
 type Token =

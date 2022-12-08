@@ -1,5 +1,5 @@
-import { Network, Request, Response } from "./net";
-import { webhooks, messages } from "./types";
+import { Network, Request, Response } from "./net/index.js";
+import { webhooks, messages } from "./types/index.js";
 
 export function create(channel_id: string, webhook: webhooks.CreatePayload): Response<webhooks.Webhook> {
   return Network.push(new Request(`channels/${channel_id}/webhooks`)

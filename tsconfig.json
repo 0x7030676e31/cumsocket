@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "target": "ESNext",
-    "module": "commonjs",
-    "rootDir": "src",
     "outDir": "./build",
     "removeComments": true,
     "esModuleInterop": true,
@@ -10,5 +10,6 @@
     "strict": true,
     "resolveJsonModule": true,
     "experimentalDecorators": true
-  }
+  },
+  "include": ["src/**/*"],
 }

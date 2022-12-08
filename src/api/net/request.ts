@@ -1,4 +1,4 @@
-import op2 from "../../op2.json";
+import op2 from "../../op2.json" assert { type: "json" };
 
 export type Method = "POST" | "GET" | "PUT" | "PATCH" | "DELETE";
 export interface RequestData {

@@ -1,5 +1,5 @@
-import Core, { listeners, callback, types } from "../core";
-import Expression from "./expression";
+import Core, { listeners, callback, types } from "../core/index.js";
+import Expression from "./expression.js";
 
 type dbMain = { id: number, module: string, state: boolean }[];
 type dbRules = { parent: number, state: boolean, prior: number, expr: string}[];
@@ -69,7 +69,7 @@ export default class Permissions {
 
   public async ready(ctx: Core): Promise<void> {
     this.listeners = ctx.listenerList();
-  
+    
     // process the queue
     this.isReady = true;
     this.queue.forEach(v => this.process(v.id, v.callback, v.payload, v.event));  

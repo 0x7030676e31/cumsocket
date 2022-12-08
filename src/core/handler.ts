@@ -1,6 +1,6 @@
-import DispatchPayload, * as events from "./mapping";
+import DispatchPayload, * as events from "./mapping.js";
 import { EventEmitter } from "events";
-import op2 from "../op2.json";
+import op2 from "../op2.json" assert { type: "json" };
 import WebSocket from "ws";
 
 type payload = { op: number, d?: any, s?: number, t?: string };

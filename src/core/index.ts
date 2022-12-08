@@ -1,11 +1,11 @@
-import { Client as dbClient, QueryResult } from "pg";
-import Handler from "./handler";
-import Client from "../client";
-import * as api from "../api";
+import Client from "../client/index.js";
+import * as api from "../api/index.js";
+import Handler from "./handler.js";
+import pg from "pg";
 import fs from "fs";
 
-export * as types from "./mapping";
-export * as apiTypes from "../api/types";
+export * as apiTypes from "../api/types/index.js";
+export * as types from "./mapping.js";
 
 const err = (msg: string) => { throw new Error(msg); };
 
@@ -28,7 +28,7 @@ export default class Core extends Handler {
   private _eventListeners: listeners = {};
   private _modules: Module[] = [];
   private _perms: boolean = process.env.PERMS?.toLowerCase() === "true";
-  private _db: dbClient | null = null;
+  private _db: pg.Client | null = null;
 
   // utils
   public readonly api = api;
@@ -41,7 +41,7 @@ export default class Core extends Handler {
     
     // init database
     if (process.env.DATABASE_URL) {
-      this._db = new dbClient({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+      this._db = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
       this._db.connect();
     } else this.log("Core", "No database url provided; database functionality will be disabled.");
   
@@ -53,12 +53,12 @@ export default class Core extends Handler {
     // setup client dispatch receiver
     // this.on("dispatch", this.client.dispatch.bind(this.client)); // TODO
 
-    // setup dispatch reciever    
-    if (this._perms) this.loadModule("permissions/index");
+    // setup dispatch reciever 
+    if (this._perms) await this.loadModule("permissions/index");
     else this.on("dispatch", this.dispatch.bind(this));
     
     // load modules
-    this.loadModules("modules");
+    await this.loadModules("modules");
 
     this._modules.forEach(v => v.ready?.(this));
   }
@@ -69,23 +69,23 @@ export default class Core extends Handler {
   }
 
   // load all modules
-  protected loadModules(dir: string): void {
-    const path = `${__dirname}/../${dir}`;
+  protected async loadModules(dir: string): Promise<void> {
+    const path = `./build/${dir}`;
     if (!fs.existsSync(path)) throw new Error(`Failed to load modules: '${path}' does not exist.`);
 
     const files = fs.readdirSync(path, { withFileTypes: true });
     const targets: string[] = files.filter(v => !v.isDirectory() && v.name.endsWith(".js")).map(v => `${dir}/${v.name}`);
     files.filter(v => v.isDirectory()).forEach(v => fs.existsSync(`${path}/${v.name}/index.js`) && targets.push(`${dir}/${v.name}/index.js`));
     
-    targets.forEach(file => this.loadModule(file));
+    await Promise.all(targets.map(file => this.loadModule(file)));
   }
 
   // load a module
-  protected loadModule(file: string): Module | void {
-    const path = `${__dirname}/../${file}${file.endsWith(".js") ? "" : ".js"}`;
-    if (!fs.existsSync(path)) throw new Error(`Failed to load module: '${path}' does not exist.`);
+  protected async loadModule(file: string): Promise<Module | void> {
+    const filename = file + (file.endsWith(".js") ? "" : ".js");
+    if (!fs.existsSync(`./build/${filename}`)) throw new Error(`Failed to load module: '${file}' does not exist.`);
 
-    const module = require(path).default;
+    const module = (await import(`../${filename}`)).default;
     if (!this.isClass(module)) return;
 
     // initialize module
@@ -130,7 +130,7 @@ export default class Core extends Handler {
   }
 
   // send a request to the database
-  public async dbQuery(query: string, ...args: any[]): Promise<QueryResult<any> | null> {
+  public async dbQuery(query: string, ...args: any[]): Promise<pg.QueryResult<any> | null> {
     if (!this._db) return null;
     return this._db.query(query.replaceAll(/\$\d+/g, (v) => args[+v.slice(1) - 1] ?? "NULL"));
   }

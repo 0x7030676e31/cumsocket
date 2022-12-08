@@ -1,4 +1,4 @@
-import Core, { types, apiTypes } from "../core";
+import Core, { types, apiTypes } from "../core/index.js";
 
 export default class Bridge {
   public readonly ctx!: Core;

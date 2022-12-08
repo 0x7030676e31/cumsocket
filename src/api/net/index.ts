@@ -1,3 +1,3 @@
-export { Response } from "./response";
-export { Request } from "./request";
-export { Network } from "./network";
+export { Response } from "./response.js";
+export { Request } from "./request.js";
+export { Network } from "./network.js";

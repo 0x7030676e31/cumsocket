@@ -1,2 +1,2 @@
-export * as messages from "./messages";
-export * as webhooks from "./webhooks";
+export * as messages from "./messages.js";
+export * as webhooks from "./webhooks.js";
