@@ -170,7 +170,7 @@ export default class Permissions {
 
           // update the priority of the rules
           Object.entries(this.perms).forEach(([key, value]) => value.rules.forEach((_, i) => this.perms[key].rules[i].prior = i));
-          await Promise.all(ids.map(v => this.reorder(v)));
+          await this.ctx.dbQuery(`UPDATE permsRules SET prior = temp.idx FROM (SELECT ROW_NUMBER() OVER (PARTITION BY parent ORDER BY prior) AS idx, parent, prior FROM test) AS temp WHERE permsRules.prior = temp.prior AND permsRules.parent = temp.parent;`)
 
           this.respond(`Successfully removed ${unused.length} unused modules, reordered ${newOrder.length} ids and ${ids.length} modules.`);
           break; 
@@ -287,7 +287,7 @@ export default class Permissions {
       // reorders the rules
       case "cleanup":
         perms.rules = perms.rules.sort((a, b) => (a.prior < b.prior) as unknown as number);
-        await this.reorder(id);
+        await this.ctx.dbQuery("UPDATE permsRules SET prior = temp.idx FROM (SELECT ROW_NUMBER() OVER (PARTITION BY parent ORDER BY prior) AS idx, prior FROM test WHERE parent = $1) AS temp WHERE permsRules.prior = temp.prior AND permsRules.parent = $1;", parent);
         this.respond("Successfully cleaned up the rules.");
         break;
 
@@ -341,11 +341,6 @@ export default class Permissions {
     perms.rules.splice(idx === -1 ? perms.rules.length : idx, 0, { state, prior, expr });
 
     await this.ctx.dbQuery("INSERT INTO permsRules (parent, state, prior, expr) VALUES ($1, $2, $3, '$4');", parent, state, prior, expr.encode());
-  }
-
-  private async reorder(id: string) {
-    const parent = this.refers.find(v => v[0] === id)![1];
-    return this.ctx.dbQuery("WITH updateData AS (SELECT prior AS tmp, ROW_NUMBER() OVER (ORDER BY prior) FROM permsRules WHERE parent = $1) UPDATE permsRules SET prior = row_number - 1 FROM updateData WHERE tmp = prior AND parent = $1;", parent);
   }
 
   private exprStringify(expr: Expression): string {
