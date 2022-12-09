@@ -170,7 +170,7 @@ export default class Permissions {
 
           // update the priority of the rules
           Object.entries(this.perms).forEach(([key, value]) => value.rules.forEach((_, i) => this.perms[key].rules[i].prior = i));
-          await this.ctx.dbQuery(`UPDATE permsRules SET prior = temp.idx FROM (SELECT ROW_NUMBER() OVER (PARTITION BY parent ORDER BY prior) AS idx, parent, prior FROM test) AS temp WHERE permsRules.prior = temp.prior AND permsRules.parent = temp.parent;`)
+          await this.ctx.dbQuery(`UPDATE permsRules SET prior = temp.idx FROM (SELECT ROW_NUMBER() OVER (PARTITION BY parent ORDER BY prior) AS idx, parent, prior FROM permsRules) AS temp WHERE permsRules.prior = temp.prior AND permsRules.parent = temp.parent;`)
 
           this.respond(`Successfully removed ${unused.length} unused modules, reordered ${newOrder.length} ids and ${ids.length} modules.`);
           break; 
@@ -287,7 +287,7 @@ export default class Permissions {
       // reorders the rules
       case "cleanup":
         perms.rules = perms.rules.sort((a, b) => (a.prior < b.prior) as unknown as number);
-        await this.ctx.dbQuery("UPDATE permsRules SET prior = temp.idx FROM (SELECT ROW_NUMBER() OVER (PARTITION BY parent ORDER BY prior) AS idx, prior FROM test WHERE parent = $1) AS temp WHERE permsRules.prior = temp.prior AND permsRules.parent = $1;", parent);
+        await this.ctx.dbQuery("UPDATE permsRules SET prior = temp.idx FROM (SELECT ROW_NUMBER() OVER (PARTITION BY parent ORDER BY prior) AS idx, prior FROM permsRules WHERE parent = $1) AS temp WHERE permsRules.prior = temp.prior AND permsRules.parent = $1;", parent);
         this.respond("Successfully cleaned up the rules.");
         break;
 
