@@ -43,7 +43,7 @@ export default class ChatGPT {
     // ask chatgpt
     setTimeout(() => this.free = true, this.cooldown);
     this.api.sendMessage(content, { timeoutMs: this.timeout }).then(
-      content => this.edit(msg.channel_id, id, content),
+      content => this.edit(msg.channel_id, id, content.length > 2000 ? "⚠️ ChatGPT response too long (placeholder message)" : content),
       err => this.edit(msg.channel_id, id, "⚠️ ChatGPT encountered an error: " + err.message),
     );
   }
