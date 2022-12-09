@@ -136,6 +136,10 @@ class Handler extends EventEmitter {
     process.exit(0);
   }
 
+  public async presenceUpdate(presence: Presence): Promise<void> {
+    this._ws.send(JSON.stringify({ op: 3, d: presence }));
+  }
+
   // update user voice settings
   public async voiceStateUpdate(payload: VoiceState): Promise<void> {
     this._ws.send(JSON.stringify({ op: 4, d: payload }));
@@ -161,6 +165,37 @@ class Handler extends EventEmitter {
 
     console.log(`(${time}) [${header}] ${msg}`);
   }
+}
+
+interface Presence {
+  status: "online" | "dnd" | "idle" | "invisible";
+  since: number;
+  activities: (Activity0 | Activity4)[];
+  afk: boolean;
+}
+
+interface Activity4 {
+  type: 4;
+  name: "Custom Status";
+  state: string;
+  emoji: string | null;
+}
+
+interface Activity0 {
+  type: 0;
+  application_id: string;
+  assets?: {
+    large_image?: string;
+    large_text?: string;
+    small_image?: string;
+    small_text?: string;
+  };
+  details?: string;
+  name?: string;
+  state?: string;
+  timestamps?: { start: number } | { end: number }; 
+  buttons?: [ string?, string? ];
+  metadata?: { button_urls?: [ string?, string? ] };
 }
 
 interface VoiceState {
