@@ -46,7 +46,7 @@ export default class Core extends Handler {
     } else this.log("Core", "No database url provided; database functionality will be disabled.");
   
     // init modules
-    this.on("open", this.setup.bind(this));
+    this.once("open", this.setup.bind(this));
   }
 
   private async setup(): Promise<void> {
