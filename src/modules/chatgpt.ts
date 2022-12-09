@@ -12,6 +12,9 @@ export default class ChatGPT {
   private timeout!: number;
   private cooldown!: number;
 
+  // temp
+  public ignore = true;
+
   public async load(ctx: Core): Promise<void> {
     this.timeout = +process.env.chatgpt_timeout!;
     this.cooldown = +process.env.chatgpt_cooldown!;
