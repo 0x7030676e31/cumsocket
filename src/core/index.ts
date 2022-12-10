@@ -1,4 +1,5 @@
 import Client from "../client/index.js";
+import DBStorage from "./dbstorage.js";
 import * as api from "../api/index.js";
 import Handler from "./handler.js";
 import pg from "pg";
@@ -33,6 +34,7 @@ export default class Core extends Handler {
   // utils
   public readonly api = api;
   public readonly client = new Client(this);
+  private readonly _dbStorage = new DBStorage(this);
 
   constructor() {
     super(process.env.TOKEN!);
@@ -43,6 +45,7 @@ export default class Core extends Handler {
     if (process.env.DATABASE_URL) {
       this._db = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
       this._db.connect();
+      this._dbStorage.loadDB();
     } else this.log("Core", "No database url provided; database functionality will be disabled.");
   
     // init modules
@@ -51,7 +54,7 @@ export default class Core extends Handler {
 
   private async setup(): Promise<void> {
     // setup client dispatch receiver
-    // this.on("dispatch", this.client.dispatch.bind(this.client)); // TODO
+    this.on("dispatch", this.client.dispatch.bind(this.client));
 
     // setup dispatch reciever 
     if (this._perms) await this.loadModule("permissions/index");
@@ -127,6 +130,12 @@ export default class Core extends Handler {
   // check if object is a class constructor
   private isClass(v: any): boolean {
     return Boolean(v && typeof v === "function" && v.prototype && !Object.getOwnPropertyDescriptor(v, 'prototype')?.writable);
+  }
+
+  // get storage instance
+  public get storage(): DBStorage | null {
+    if (process.env.DATABASE_URL === undefined) return null;
+    return this._dbStorage;
   }
 
   // send a request to the database

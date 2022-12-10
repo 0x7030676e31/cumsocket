@@ -3,7 +3,6 @@
 build/
 node_modules/
 rip/
-ai/
 
 .env
 cumsocket.code-workspace

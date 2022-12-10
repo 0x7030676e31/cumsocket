@@ -10,11 +10,11 @@ Cumsocket is a "simple" Discord module based selfbot written in TypeScript that 
 - Database support
 - Almost undetectable
 - Rate limit handling
-- Client like data handling (soon)
+- Client like data handling (only prototype for now)
 
 # Installation
 1. Clone the repository `git clone https://github.com/0x7030676e31/cumsocket`
-2. Install dependencies `npm install`
+2. Install dependencies `npm install` (see [nerdy stuff](#Dependencies) for more info)
 3. Provide env vars in `.env` file (see [.env.examples](.env.example))
 4. Run via `npm run start`!
 
@@ -103,9 +103,19 @@ Note that all modules are loaded from `modules` directory.
 - `permissions` - Permissions management module, used for managing permissions for other modules
 - `presence` - Animated rich presence module, used to disaply rich presence on bot's profile
 
+# Dependencies
+- [chatgpt 2.0.5](https://github.com/transitive-bullshit/chatgpt-api)
+- [decimal.js 10.4.2](https://github.com/MikeMcl/decimal.js)
+- [dotenv 16.0.3](https://github.com/motdotla/dotenv)
+- [node-fetch 3.3.0](https://github.com/node-fetch/node-fetch)
+- [pg 8.8.0](https://github.com/brianc/node-postgres))
+- [ws 8.9.0](https://github.com/websockets/ws)
+- [zeromq 6.0.0-beta.16](https://github.com/zeromq/zeromq.js)
+- [typescript 4.8.4](https://github.com/Microsoft/TypeScript)
+- [node 19.x](https://github.com/nodejs/node)
+
 # Future plans
 My goal was to create something like environment for module based selfbot. Over time maybe I will add more modules and features like client like data manager. I'll maintain this project as long as I can but discord likes to change api in a rather strange way. As long as I can, I'll try to keep this project up to date.
-
 
 
 <br>

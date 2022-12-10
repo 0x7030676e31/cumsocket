@@ -15,13 +15,19 @@ export default class Egg {
   private self!: string;
   private chance!: number;
   private threshold!: number;
+  private count!: number;
   // private client!: zmq.Request;
 
   public async load(ctx: Core): Promise<void> {
     this.self = ctx.getSelfId();
     this.chance = +process.env.rare_egg_chance!
     this.threshold = +process.env.egg_ai_threshold!
-  
+    
+    const storage = ctx.storage!;
+    if (!storage.has("egg_count")) await storage.set("egg_count", "0");
+    this.count = +storage.get("egg_count")!;
+
+
     // run egg ai server
     // exec("python3 ai/egg_detector.py");
 
@@ -35,14 +41,14 @@ export default class Egg {
     if (msg.author.id === this.self) return;
     
     // add a random egg reaction
-    if (REG.test(msg.content)) return this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, this.getEgg());
+    if (REG.test(msg.content)) return this.addEgg(msg.channel_id, msg.id);
 
     // get attachments and check if they contain an egg
     const urls = msg.attachments.filter(v => v.content_type && ATT_REG.test(v.content_type)).map(v => v.url);
     if (!urls.length) return;
 
     const hasEgg = await this.hasEggAI(urls);
-    if (hasEgg) this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, this.getEgg());
+    if (hasEgg) this.addEgg(msg.channel_id, msg.id);
   }
 
   @Core.listen("MESSAGE_UPDATE")
@@ -59,8 +65,8 @@ export default class Egg {
     if (hasEggReaction === null) return;
 
     // add/remove egg reaction depending on content and reactions
-    if (hasEggContent && hasEggReaction === false) return this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, this.getEgg());
-    if (!hasEggContent && hasEggReaction !== false) return this.ctx.api.messages.reactionDelete(msg.channel_id, msg.id, hasEggReaction);
+    if (hasEggContent && hasEggReaction === false) return this.addEgg(msg.channel_id, msg.id);
+    if (!hasEggContent && hasEggReaction !== false) return this.removeEgg(msg.channel_id, msg.id, hasEggReaction);
   }
 
   // check if a message has an egg reaction
@@ -91,5 +97,17 @@ export default class Egg {
     // }
 
     // return false;
+  }
+
+  private async addEgg(channel: string, message: string): Promise<void> {
+    this.ctx.api.messages.reactionAdd(channel, message, this.getEgg());
+    this.count++;
+    await this.ctx.storage!.set("egg_count", this.count.toString());
+  }
+
+  private async removeEgg(channel: string, message: string, egg: string): Promise<void> {
+    this.ctx.api.messages.reactionDelete(channel, message, egg);
+    this.count--;
+    await this.ctx.storage!.set("egg_count", this.count.toString());
   }
 }
