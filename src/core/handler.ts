@@ -53,11 +53,13 @@ class Handler extends EventEmitter {
 
       // client have to reconnect
       case 7:
+        this.log("Gateway", "Server is requesting a reconnect.");
         this.connect(true);
         break;
 
       // session has been invalidated and client should eventaully reconnect
       case 9:
+        this.log("Gateway", "Session invalidated.");
         this.connect(d === true);
         break;
 

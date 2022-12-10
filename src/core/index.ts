@@ -45,7 +45,6 @@ export default class Core extends Handler {
     if (process.env.DATABASE_URL) {
       this._db = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
       this._db.connect();
-      this._dbStorage.loadDB();
     } else this.log("Core", "No database url provided; database functionality will be disabled.");
   
     // init modules
@@ -55,6 +54,8 @@ export default class Core extends Handler {
   private async setup(): Promise<void> {
     // setup client dispatch receiver
     this.on("dispatch", this.client.dispatch.bind(this.client));
+
+    if (process.env.DATABASE_URL) await this._dbStorage.loadDB();
 
     // setup dispatch reciever 
     if (this._perms) await this.loadModule("permissions/index");

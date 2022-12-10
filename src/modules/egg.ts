@@ -4,7 +4,7 @@ import Core, { types } from "../core/index.js";
 
 const EGGS = ["🥚", "🍳"];
 const REG = /egg|🥚|🍳/i; 
-const PORT = 5555;
+// const PORT = 5555;
 const ATT_REG = /^image(?!=\/gif)/;
 
 export default class Egg {
@@ -88,15 +88,13 @@ export default class Egg {
 
   // check if an image contains an egg using the egg ai
   private async hasEggAI(urls: string[]): Promise<boolean> {
-    return false;
-
     // for (const url of urls) {
     //   this.client.send(url);
     //   const value = (await this.client.receive()).toString();
     //   if (+value >= this.threshold) return true;
     // }
 
-    // return false;
+    return false;
   }
 
   private async addEgg(channel: string, message: string): Promise<void> {

@@ -108,7 +108,7 @@ Note that all modules are loaded from `modules` directory.
 - [decimal.js 10.4.2](https://github.com/MikeMcl/decimal.js)
 - [dotenv 16.0.3](https://github.com/motdotla/dotenv)
 - [node-fetch 3.3.0](https://github.com/node-fetch/node-fetch)
-- [pg 8.8.0](https://github.com/brianc/node-postgres))
+- [pg 8.8.0](https://github.com/brianc/node-postgres)
 - [ws 8.9.0](https://github.com/websockets/ws)
 - [zeromq 6.0.0-beta.16](https://github.com/zeromq/zeromq.js)
 - [typescript 4.8.4](https://github.com/Microsoft/TypeScript)
