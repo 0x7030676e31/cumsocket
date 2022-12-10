@@ -1,5 +1,5 @@
 import Core, { types } from "../core/index.js";
-import { ChatGPTAPI } from "chatgpt";
+import { ChatGPTAPI, ChatGPTConversation } from "chatgpt";
 
 const BAD_WORDS = new RegExp(Buffer.from("KD88IVthLXpBLVpdKSg/OmN1bXxzZW1lbnxjb2NrfHB1c3N5fGN1bnR8bmlnZy5yKSg/IVthLXpBLVpdKQ==", "base64").toString());
 const MAX_REQUESTS = 3;
@@ -15,6 +15,7 @@ export default class ChatGPT {
   private lastRequest: number = 0;
   private timeout!: number;
   private cooldown!: number;
+  private convo!: ChatGPTConversation;
 
   public async load(ctx: Core): Promise<void> {
     this.timeout = +process.env.chatgpt_timeout!;
@@ -26,6 +27,7 @@ export default class ChatGPT {
       sessionToken: process.env.chatgpt_token!
     });
     await this.api.ensureAuth();
+    this.convo = this.api.getConversation();
   }
 
   @Core.listen("MESSAGE_CREATE")
@@ -50,7 +52,7 @@ export default class ChatGPT {
     const { id } = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "📨 Waiting for ChatGPT response...").unwrap();
     
     // ask chatgpt
-    await this.api.sendMessage(content, { timeoutMs: this.timeout }).then(
+    await this.convo.sendMessage(content, { timeoutMs: this.timeout }).then(
       content => this.edit(msg.channel_id, id, this.validate(content)),
       err => this.edit(msg.channel_id, id, "⚠️ ChatGPT encountered an error: " + err.message),
     );

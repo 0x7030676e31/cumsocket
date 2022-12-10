@@ -1,5 +1,5 @@
 # Cumsocket v2
-Cumsocket is a "simple" Discord module based selfbot written in TypeScript that has features such as permissions management, Discord api, and more. Also worth mentioning is fact that selfbots are against Discord's ToS and can get you banned, this selfbot is not doing anything harmful to Discord's servers, but it's still against the ToS. I'm not recommending using selfbots but sometimes it's just fun to have one.
+Cumsocket is a "simple" Discord module based selfbot written in TypeScript that has features such as permissions management, Discord api, and more. Also worth mentioning is fact that selfbots are against Discord's ToS and can get you banned, even if you don't do anything harmful. If you really want to use selfbots, please don't do it on your main account.
 
 
 # Features
@@ -48,19 +48,60 @@ export default class ExampleModule {
 
   // Called on every "MESSAGE_CREATE" event
   @Core.listen("MESSAGE_CREATE")
-  public async onMessageCreate(data: types.MessageCreate): Promise<void> {
+  public async onMessageCreate(msg: types.MESSAGE_CREATE): Promise<void> {
     ctx.log("example", "Message created!");
+  }
+}
+```
+
+## Basic Ping Pong Module
+```typescript
+import Core, { types } from "../core/index.js";
+
+// Used to calculate timestamp from snowflake
+const EPOCH = 1420070400000n;
+
+export default class Pong {
+  public readonly id: string = "pong";
+  public readonly ctx!: Core;
+
+  private mention!: string;
+
+  public async load(ctx: Core): Promise<void> {
+    // How bot's mention looks like
+    this.mention = `<@${ctx.getSelfId()}>`;
+  }
+
+  @Core.listen("MESSAGE_CREATE")
+  public async onMessageCreate(msg: types.MESSAGE_CREATE): Promise<void> {
+    // Check if message is mention
+    if (msg.content !== this.mention) return;
+
+    // Respond to message
+    const reply = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "🏓 Ping!").unwrap();
+
+    // Calculate ping
+    const timestamp1 = (BigInt(msg.id) >> 22n) + EPOCH;
+    const timestamp2 = (BigInt(reply.id) >> 22n) + EPOCH;
+    const diff = timestamp2 - timestamp1;
+
+    // Edit message to show ping
+    this.ctx.api.messages.edit(msg.channel_id, reply.id, {
+      content: `🏓 Pong! ${diff}ms`,
+      allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: false },
+    });
   }
 }
 ```
 Note that all modules are loaded from `modules` directory.
 
 # Default modules
-- `egg` - Csed as "ping" command, reacting to message containing eggs
+- `egg` - Csed as "ping" command, reacting to message containing eggs, and soon to images too!
 - `chatgpt` - Chatbot using GPT-3, responds to messages that start with mention
 - `bridge` - Used for copying attachments from multiple channels to one specified channel using webhooks
 - `math` - Simple math module that can evaluate simple math expressions
 - `permissions` - Permissions management module, used for managing permissions for other modules
+- `presence` - Animated rich presence module, used to disaply rich presence on bot's profile
 
 # Future plans
 My goal was to create something like environment for module based selfbot. Over time maybe I will add more modules and features like client like data manager. I'll maintain this project as long as I can but discord likes to change api in a rather strange way. As long as I can, I'll try to keep this project up to date.
