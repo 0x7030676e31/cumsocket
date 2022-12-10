@@ -96,7 +96,8 @@ export default class Pong {
 Note that all modules are loaded from `modules` directory.
 
 # Default modules
-- `egg` - Csed as "ping" command, reacting to message containing eggs, and soon to images too!
+- `egg` - Reacting to message containing eggs, and soon to images too! (Why? Idk)
+- `pong` - Simple ping pong module
 - `chatgpt` - Chatbot using GPT-3, responds to messages that start with mention
 - `bridge` - Used for copying attachments from multiple channels to one specified channel using webhooks
 - `math` - Simple math module that can evaluate simple math expressions
