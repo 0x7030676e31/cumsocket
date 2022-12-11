@@ -16,7 +16,6 @@ export default class ChatGPT {
   private timeout!: number;
   private cooldown!: number;
   private answered!: number;
-  private token!: string;
 
   public async load(ctx: Core): Promise<void> {
     this.timeout = +process.env.chatgpt_timeout!;
@@ -27,14 +26,11 @@ export default class ChatGPT {
     await ctx.storage!.setIfNotExists("gpt_answered", "0");
     this.answered = +ctx.storage!.get("gpt_answered")!;
 
-    // get token
-    await ctx.storage!.setIfNotExists("gpt_token", process.env.chatgpt_token!);
-    this.token = ctx.storage!.get("gpt_token")!;
-
     // init chatgpt
-    this.api = new ChatGPTAPI({
-      sessionToken: this.token!,
-    });
+    // this.api = new ChatGPTAPI({
+    //   sessionToken: this.token,
+    // });
+    // await this.api.ensureAuth();
   }
 
   @Core.listen("MESSAGE_CREATE")
@@ -56,24 +52,18 @@ export default class ChatGPT {
     this.lastRequest = Date.now();
 
     // send waiting message
-    const response = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "📨 Waiting for ChatGPT response...").assume();
+    // const response = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "📨 Waiting for ChatGPT response...").assume();
+    const response = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "⚠️ ChatGPT is temporarily disabled due to unknown authorization issue.").assume();
     if (!response) {
       this.requests--;
       return;
     }
 
-    // refresh token
-    const token = await this.api.ensureAuth();
-    if (token !== this.token) {
-      this.token = token;
-      await this.ctx.storage!.set("gpt_token", token);
-    }
-
     // ask chatgpt
-    await this.api.sendMessage(content, { timeoutMs: this.timeout }).then(
-      content => this.edit(msg.channel_id, response.id, this.validate(content)),
-      err => this.edit(msg.channel_id, response.id, "⚠️ ChatGPT encountered an error: " + err.message),
-    );
+    // await this.api.sendMessage(content, { timeoutMs: this.timeout }).then(
+    //   content => this.edit(msg.channel_id, response.id, this.validate(content)),
+    //   err => this.edit(msg.channel_id, response.id, "⚠️ ChatGPT encountered an error: " + err.message),
+    // );
 
     this.requests--;
   }
