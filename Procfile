@@ -1,1 +1,1 @@
-worker: node --no-warnings build/index.js
+bot: node --no-warnings build/index.js

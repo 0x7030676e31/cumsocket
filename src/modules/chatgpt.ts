@@ -1,5 +1,5 @@
 import Core, { types } from "../core/index.js";
-import { ChatGPTAPI, ChatGPTConversation } from "chatgpt";
+import { ChatGPTAPI } from "chatgpt";
 
 const BAD_WORDS = new RegExp(Buffer.from("KD88IVthLXpBLVpdKSg/OmN1bXxzZW1lbnxjb2NrfHB1c3N5fGN1bnR8bmlnZy5yKSg/IVthLXpBLVpdKQ==", "base64").toString());
 const MAX_REQUESTS = 3;
@@ -25,7 +25,6 @@ export default class ChatGPT {
     this.api = new ChatGPTAPI({
       sessionToken: process.env.chatgpt_token!
     });
-    await this.api.ensureAuth();
   }
 
   @Core.listen("MESSAGE_CREATE")
@@ -47,12 +46,16 @@ export default class ChatGPT {
     this.lastRequest = Date.now();
 
     // send waiting message
-    const { id } = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "📨 Waiting for ChatGPT response...").unwrap();
-    
+    const response = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "📨 Waiting for ChatGPT response...").expect(() => null);
+    if (!response) {
+      this.requests--;
+      return;
+    }
+
     // ask chatgpt
     await this.api.sendMessage(content, { timeoutMs: this.timeout }).then(
-      content => this.edit(msg.channel_id, id, this.validate(content)),
-      err => this.edit(msg.channel_id, id, "⚠️ ChatGPT encountered an error: " + err.message),
+      content => this.edit(msg.channel_id, response.id, this.validate(content)),
+      err => this.edit(msg.channel_id, response.id, "⚠️ ChatGPT encountered an error: " + err.message),
     );
 
     this.requests--;
