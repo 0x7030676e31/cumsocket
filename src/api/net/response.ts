@@ -33,13 +33,25 @@ export class Response<T> {
     if (callback) return await callback({ code: res.code, message: res.message, errors: res.errors });
   }
 
+  // Returns the response data assuming the response was successful, otherwise return null.
+  public async assume(): Promise<T | null> {
+    const res = await this.pending;
+    if (res.ok) return res.data;
+    return null;
+  }
+
   // Returns raw promise, use this if you want to handle the response yourself.
   public get(): ResponseBody<T> {
     return this.pending;
   }
 
-  // Returns the response data assuming that the fetch request was successful.
+  // Returns the response data assuming the response was successful.
   public async ignore(): Promise<T> {
     return (await (this.pending as ResponseOK<T>)).data;
+  }
+
+  // Returns boolean indicating if the response was successful.
+  public async isOk(): Promise<boolean> {
+    return (await this.pending).ok;
   }
 }

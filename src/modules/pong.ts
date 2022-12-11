@@ -19,8 +19,9 @@ export default class Pong {
     // Check if message is mention
     if (msg.content !== this.mention) return;
 
-    // Respond to message
-    const reply = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "🏓 Ping!").unwrap();
+    // Respond to message, if failed - return
+    const reply = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "🏓 Ping!").assume();
+    if (reply === null) return;
 
     // Calculate ping
     const timestamp1 = (BigInt(msg.id) >> 22n) + EPOCH;

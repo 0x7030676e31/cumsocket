@@ -15,15 +15,25 @@ export default class ChatGPT {
   private lastRequest: number = 0;
   private timeout!: number;
   private cooldown!: number;
+  private answered!: number;
+  private token!: string;
 
   public async load(ctx: Core): Promise<void> {
     this.timeout = +process.env.chatgpt_timeout!;
     this.cooldown = +process.env.chatgpt_cooldown!;
     this.mention = `<@${ctx.getSelfId()}>`;
 
+    // get total ammout of answered messages
+    await ctx.storage!.setIfNotExists("gpt_answered", "0");
+    this.answered = +ctx.storage!.get("gpt_answered")!;
+
+    // get token
+    await ctx.storage!.setIfNotExists("gpt_token", process.env.chatgpt_token!);
+    this.token = ctx.storage!.get("gpt_token")!;
+
     // init chatgpt
     this.api = new ChatGPTAPI({
-      sessionToken: process.env.chatgpt_token!
+      sessionToken: this.token!,
     });
   }
 
@@ -46,10 +56,17 @@ export default class ChatGPT {
     this.lastRequest = Date.now();
 
     // send waiting message
-    const response = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "📨 Waiting for ChatGPT response...").expect(() => null);
+    const response = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "📨 Waiting for ChatGPT response...").assume();
     if (!response) {
       this.requests--;
       return;
+    }
+
+    // refresh token
+    const token = await this.api.ensureAuth();
+    if (token !== this.token) {
+      this.token = token;
+      await this.ctx.storage!.set("gpt_token", token);
     }
 
     // ask chatgpt
@@ -69,6 +86,12 @@ export default class ChatGPT {
   }
 
   private async edit(channel_id: string, id: string, content: string): Promise<void> {
-    this.ctx.api.messages.edit(channel_id, id, { content: content, allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: false }, });
+    const successful = await this.ctx.api.messages.edit(channel_id, id, {
+      content: content,
+      allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: false },
+    }).isOk();
+
+    if (successful) this.answered++;
+    await this.ctx.storage!.set("gpt_answered", this.answered.toString());
   }
 }

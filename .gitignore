@@ -2,7 +2,6 @@
 .VSCodeCounter/
 build/
 node_modules/
-rip/
 
 .env
 cumsocket.code-workspace

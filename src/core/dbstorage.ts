@@ -30,6 +30,14 @@ export default class DBStorage {
     this.local.set(key, value);
   }
 
+  public async setIfNotExists(key: string, value: string): Promise<void> {
+    if (!this.local.has(key)) await this.set(key, value);
+  }
+
+  public async setIfDiff(key: string, value: string): Promise<void> {
+    if (this.local.get(key) !== value) await this.set(key, value);
+  }
+
   public has(key: string): boolean {
     return this.local.has(key);
   }

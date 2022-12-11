@@ -36,9 +36,14 @@ export default class Presence {
 
       case 3:
         content = `Egged ${this.ctx.storage!.get("egg_count")} times`;
+        break;
+
+      case 4:
+        content = `${this.ctx.storage!.get("gpt_answered")} questions answered`;
         this.state = -1;
         break;
     }
+
 
     this.ctx.presenceUpdate({ status: "online", since: 0, afk: false, activities: [{
       application_id: "1050857456437305514",
