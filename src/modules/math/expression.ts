@@ -40,7 +40,55 @@ export default class Lexer {
     [ "^", "%" ],
     [ "*", "/", "//" ],
     [ "+", "-" ],
-  ]
+  ];
+
+  private static readonly superscript: { [key: string]: string } = {
+    "⁰": "0",
+    "¹": "1",
+    "²": "2",
+    "³": "3",
+    "⁴": "4",
+    "⁵": "5",
+    "⁶": "6",
+    "⁷": "7",
+    "⁸": "8",
+    "⁹": "9",
+  };
+
+  private static readonly subscript: { [key: string]: string } = {
+    "₀": "0",
+    "₁": "1",
+    "₂": "2",
+    "₃": "3",
+    "₄": "4",
+    "₅": "5",
+    "₆": "6",
+    "₇": "7",
+    "₈": "8",
+    "₉": "9",
+  };
+
+  private static readonly fractions: { [key: string]: string } = {
+    "½": "1/2",
+    "⅓": "1/3",
+    "¼": "1/4",
+    "⅕": "1/5",
+    "⅙": "1/6",
+    "⅐": "1/7",
+    "⅛": "1/8",
+    "⅑": "1/9",
+    "⅒": "1/10",
+    "⅔": "2/3",
+    "⅖": "2/5",
+    "¾": "3/4",
+    "⅗": "3/5",
+    "⅜": "3/8",
+    "⅘": "4/5",
+    "⅚": "5/6",
+    "⅝": "5/8",
+    "⅞": "7/8",
+    "↉": "0",
+  }
 
   private static readonly absFn: string = "abs";
 
@@ -64,6 +112,9 @@ export default class Lexer {
       .replaceAll("√", "sqrt")
       .replaceAll(/[×⋅∙•]/g, "*")
       .replaceAll(/[÷:]/g, "/")
+      .replaceAll(/([⁰¹²³⁴⁵⁶⁷⁸⁹]+)[⁄\/]([₀₁₂₃₄₅₆₇₈₉]+)/g, (_, numerator, denominator) => `(${Lexer.superscript[numerator]}/${Lexer.subscript[denominator]})`)
+      .replaceAll(/[½⅓¼⅕⅙⅐⅛⅑⅒⅔⅖¾⅗⅜⅘⅚⅝⅞↉]/g, fraction => `(${Lexer.fractions[fraction]})`)
+      .replaceAll(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, power => "^" + power.split("").map(v => Lexer.superscript[v]).join())
       .toLowerCase();
   }
 
