@@ -12,9 +12,10 @@ class Handler extends EventEmitter {
   private _hbInterval!: NodeJS.Timer;
   private _seq: number = 0;
   private _sessionId: string = "";
+  private _resumeUrl: string = "";
 
   // codes that should cause the client to exit
-  private readonly _badCodes: number[] = [ 4004 ];
+  private readonly _badCodes: number[] = [ 4004, 4010, 4011, 4013, 4014 ];
   
   // used in the log method
   public readonly initDate: number = Date.now();
@@ -42,8 +43,18 @@ class Handler extends EventEmitter {
       case 0:
         this._seq++;
         this.emit("dispatch", d, t!);
-        if (t === "READY") return this._sessionId = d.session_id && this.emit("ready", d);
-        if (t === "RESUMED") return this.emit("resume", d) && this.log("Gateway", "Session resumed successfully.");
+        
+        if (t === "READY") {
+          this._sessionId = d.session_id;
+          this._resumeUrl = d.resume_gateway_url;
+          this.emit("ready", d);
+          return;
+        }
+        
+        if (t === "RESUMED") {
+          this.emit("resume", d);
+          this.log("Gateway", "Session resumed successfully.");
+        }
         break;
 
       // client should send a heartbeat rn
@@ -115,7 +126,7 @@ class Handler extends EventEmitter {
     if (!re) this._seq = 0;
     this.prepare();
 
-    const ws = this._ws = new WebSocket(this.url);
+    const ws = this._ws = new WebSocket(re ? this._resumeUrl : this.url);
 
     this.log("Gateway", re ? "Attempting to reconnect..." : "Connecting...");
 
