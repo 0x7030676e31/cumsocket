@@ -116,7 +116,7 @@ export default class Lexer {
       .replaceAll(/[÷:]/g, "/")
       .replaceAll(/(⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)[⁄\/](₋?[₀₁₂₃₄₅₆₇₈₉]+)/g, (_, numerator, denominator) => `(${Lexer.superscript[numerator]}/${Lexer.subscript[denominator]})`)
       .replaceAll(/[½⅓¼⅕⅙⅐⅛⅑⅒⅔⅖¾⅗⅜⅘⅚⅝⅞↉]/g, fraction => `(${Lexer.fractions[fraction]})`)
-      .replaceAll(/⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, power => "^" + power.split("").map(v => Lexer.superscript[v]).join())
+      .replaceAll(/⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, power => "^" + power.split("").map(v => Lexer.superscript[v]).join(""))
       .toLowerCase();
   }
 
