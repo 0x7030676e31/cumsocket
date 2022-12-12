@@ -99,7 +99,7 @@ Note that all modules are loaded from `modules` directory.
 # Default modules
 - `egg` - Reacting to message containing eggs, and soon to images too! (Why? Idk)
 - `pong` - Simple ping pong module
-- `chatgpt` - Chatbot using GPT-3, responds to messages that start with mention
+- `chatgpt` - Chatbot using GPT-3, responds to messages that start with mention (temporarlily disabled because of cloudflare auth issues)
 - `bridge` - Used for copying attachments from multiple channels to one specified channel using webhooks
 - `math` - Simple math module that can evaluate simple math expressions
 - `permissions` - Permissions management module, used for managing permissions for other modules

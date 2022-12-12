@@ -36,12 +36,12 @@ export default class Presence {
 
       case 3:
         content = `Egged ${this.ctx.storage!.get("egg_count")} times`;
-        break;
-
-      case 4:
-        content = `${this.ctx.storage!.get("gpt_answered")} questions answered`;
         this.state = -1;
         break;
+
+      // case 4:
+      //   content = `${this.ctx.storage!.get("gpt_answered")} questions answered`;
+      //   break;
     }
 
 

@@ -22,12 +22,12 @@
   "author": "0x7030676e31",
   "license": "ISC",
   "dependencies": {
-    "chatgpt": "^2.0.5",
-    "decimal.js": "^10.4.2",
+    "chatgpt": "^2.1.1",
+    "decimal.js": "^10.4.3",
     "dotenv": "^16.0.3",
     "node-fetch": "^3.3.0",
     "pg": "^8.8.0",
-    "ws": "^8.9.0",
+    "ws": "^8.11.0",
     "zeromq": "^6.0.0-beta.16"
   },
   "devDependencies": {

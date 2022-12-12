@@ -17,6 +17,9 @@ export default class ChatGPT {
   private cooldown!: number;
   private answered!: number;
 
+  // temporary disable
+  ignore = true;
+
   public async load(ctx: Core): Promise<void> {
     this.timeout = +process.env.chatgpt_timeout!;
     this.cooldown = +process.env.chatgpt_cooldown!;
@@ -26,11 +29,11 @@ export default class ChatGPT {
     await ctx.storage!.setIfNotExists("gpt_answered", "0");
     this.answered = +ctx.storage!.get("gpt_answered")!;
 
-    // init chatgpt
     // this.api = new ChatGPTAPI({
-    //   sessionToken: this.token,
+    //   sessionToken: process.env.chatgpt_token!,
+
     // });
-    // await this.api.ensureAuth();
+    await this.api.ensureAuth();
   }
 
   @Core.listen("MESSAGE_CREATE")
