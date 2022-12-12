@@ -56,6 +56,10 @@ export default class Lexer {
     "⁻": "-",
   };
 
+  private static formatSuperscript(str: string): string {
+    return str.split("").map(v => Lexer.superscript[v]).join("");
+  }
+
   private static readonly subscript: { [key: string]: string } = {
     "₀": "0",
     "₁": "1",
@@ -69,6 +73,10 @@ export default class Lexer {
     "₉": "9",
     "₋": "-",
   };
+
+  private static formatSubscript(str: string): string {
+    return str.split("").map(v => Lexer.subscript[v]).join("");
+  }
 
   private static readonly fractions: { [key: string]: string } = {
     "½": "1/2",
@@ -114,9 +122,9 @@ export default class Lexer {
       .replaceAll("√", "sqrt")
       .replaceAll(/[×⋅∙•]/g, "*")
       .replaceAll(/[÷:]/g, "/")
-      .replaceAll(/(⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)[⁄\/](₋?[₀₁₂₃₄₅₆₇₈₉]+)/g, (_, numerator, denominator) => `(${Lexer.superscript[numerator]}/${Lexer.subscript[denominator]})`)
+      .replaceAll(/(⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)[⁄\/](₋?[₀₁₂₃₄₅₆₇₈₉]+)/g, (_, numerator, denominator) => `((${Lexer.formatSuperscript(numerator)})/(${Lexer.formatSubscript(denominator)}))`)
       .replaceAll(/[½⅓¼⅕⅙⅐⅛⅑⅒⅔⅖¾⅗⅜⅘⅚⅝⅞↉]/g, fraction => `(${Lexer.fractions[fraction]})`)
-      .replaceAll(/⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, power => "^" + power.split("").map(v => Lexer.superscript[v]).join(""))
+      .replaceAll(/⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, power => `^(${Lexer.formatSuperscript(power)})`)
       .toLowerCase();
   }
 
