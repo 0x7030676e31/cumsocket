@@ -91,8 +91,8 @@ export default class Presence {
       name: "Cumsocket v2",
       state: content!,
       timestamps: { start: this.start },
-      buttons: [ "Check repository", "Eggs" ],
-      metadata: { button_urls: [ `https://github.com/${this.repo}`, "https://cdn.britannica.com/94/151894-050-F72A5317/Brown-eggs.jpg" ] },
+      buttons: [ "Check repository" ],
+      metadata: { button_urls: [ `https://github.com/${this.repo}` ] },
       type: 0,
     }] });
   }
