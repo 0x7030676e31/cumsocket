@@ -6,6 +6,7 @@ class Std {
   private static readonly one = new Decimal(1);
   private static readonly half = new Decimal(0.5);
   
+  // [ Regex, Min Args, Max Args, Function ]
   private static readonly functions: [RegExp, number, number, (...args: Decimal[]) => Decimal][] = [
     [/^rad(ians?)?$/, 1, 1, (num) => num.mul(Decimal.acos(-1)).div(180)],
     [/^deg(rees?)?$/, 1, 1, (num) => num.mul(180).div(Decimal.acos(-1))],
@@ -14,6 +15,7 @@ class Std {
     [/^round(ed)?$/, 1, 2, (num, num2) => num2 ? new Decimal(num.toFixed((num2.lessThan(0) || num2.greaterThan("1e+9") ? 0 : num2.floor().toNumber()), Decimal.ROUND_DOWN)) : num.round()],
     [/^(sqrt|squareroot)$/, 1, 1, (num) => num.sqrt()],
     [/^(cbrt|cuberoot)$/, 1, 1, (num) => num.cbrt()],
+    [/^(rt|root)$/, 1, 2, (num, num2) => num2 ? num.pow(this.one.div(num2)) : num.sqrt()],
     [/^(ln|naturallog(arithm)?)$/, 1, 1, (num) => num.ln()],
     [/^log(arithm)?$/, 1, 2, (num, num2?: Decimal) => num2 ? num2.log(num) : num.log()],
     [/^exp(onent(ial)?)?$/, 1, 1, (num: Decimal) => num.exp()],
@@ -57,22 +59,26 @@ class Std {
   };
 
   public readonly modifiers: { [key: string]: (value: Decimal) => Decimal } = {
-    "°": (x: Decimal) => x.mul(Std.constants.pi).div(180),
+    "°": (x: Decimal) => x.mul(Std.constants.pi).div(180), // Turn degrees into radians
     // I will add factorials later (and maybe some other modifiers)
   };
 
+  // Check if a function exists
   public isFunction(func: string): boolean {
     return Boolean(this.getFunction(func));
   }
 
+  // Check if a constant exists
   public isConstant(constant: string): boolean {
     return Boolean(Std.constants[constant]);
   }
 
+  // Get a function object by name
   public getFunction(func: string): [number, number, (...args: Decimal[]) => Decimal] {
     return Std.functions.find(v => v[0].test(func))?.slice(1) as any;
   }
 
+  // Get a constant's value by name
   public getConstant(constant: string): Decimal {
     return Std.constants[constant];
   }

@@ -7,29 +7,32 @@ export default class Math {
   public readonly id: string = "math";
   public readonly env: string[] = ["math_precision", "math_display_precision"];
 
+  // Precision for calculations
   private precision!: number;
 
   public async load(): Promise<void> {
-    // setup precision
+    // Setup precision
     Decimal.set({ precision: +process.env.math_precision! });
     this.precision = +process.env.math_display_precision!;
   }
 
   @Core.listen("MESSAGE_CREATE")
   public async onMessage(msg: types.MESSAGE_CREATE): Promise<void> {
+    // Check if message is not empty and not from bot
     if (!msg.content.length || msg.author.bot) return;
 
-    // create and evaluate expression from message
+    // Create and evaluate expression from message
     const expr = new Expression(msg.content);
     const result = expr.parse();
 
-    // check if expression is valid
+    // Check if expression is valid
     if (result === null) return;
   
-    // send formatted result
+    // Send formatted result
     this.ctx.api.messages.respond(msg.channel_id, msg.id, this.format(result));
   }
 
+  // Format result applying precision
   private format(value: Decimal): string {
     if (value.isNaN()) return "*Sorry dear user but the creator of this bot would get even more depressed implementing imaginary numbers or whatever is this so satisfy yourself with this answer instead*";
     if (!value.isFinite() && value.isPos()) return "Uh Oh, looks like I've reached the limit of my knowledge. Who can even calculate this ridiculously large number?";

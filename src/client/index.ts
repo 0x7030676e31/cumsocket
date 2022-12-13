@@ -5,8 +5,8 @@ export default class Client {
   private readonly ctx: Core;
   
   private self!: types.Self;
-  private guilds!: types.Guild[];
-  private channels!: types.Channel[];
+  private guilds: types.Guild[] = [];
+  private channels: types.Channel[] = [];
 
   constructor(ctx: Core) {
     this.ctx = ctx;

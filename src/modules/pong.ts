@@ -7,11 +7,11 @@ export default class Pong {
   public readonly id: string = "pong";
   public readonly ctx!: Core;
 
+  // How bot's mention looks like
   private mention!: string;
 
   public async load(ctx: Core): Promise<void> {
-    // How bot's mention looks like
-    this.mention = `<@${ctx.getSelfId()}>`;
+    this.mention = `<@${ctx.getIdFromToken()}>`;
   }
 
   @Core.listen("MESSAGE_CREATE")

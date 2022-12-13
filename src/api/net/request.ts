@@ -10,6 +10,8 @@ export interface RequestData {
 }
 
 export class Request {
+  protected readonly version: string = "v9"; 
+
   private _url: string;
   private _bucket: string;
   private _method: Method = "POST";
@@ -17,18 +19,21 @@ export class Request {
   private _body?: { [key: string]: string | any };
   private _headers?: { [key: string]: string };
 
+  // "X-Discord-Properties" header value
   private readonly _properties = Buffer.from(JSON.stringify(op2.d.properties)).toString("base64");
 
   constructor(bucket: string, url?: string) {
-    this._url = "https://discord.com/api/v9/" + (url ?? bucket);
+    this._url = `https://discord.com/api/${this.version}/${url ?? bucket}`;
     this._bucket = bucket;
   }
 
+  // Set the method of the request
   public setMethod(method: Method): this {
     this._method = method;
     return this;
   }
 
+  // Add a query to the request
   public addQuery(query?: { [key: string]: any }): this {
     if (!query) return this;
     
@@ -37,6 +42,7 @@ export class Request {
     return this;
   }
 
+  // Add a body to the request
   public addBody(body?: { [key: string]: string | any }): this {
     if (!body) return this;
     
@@ -45,11 +51,13 @@ export class Request {
     return this;
   }
 
+  // Add a nonce to the request based on the Discord Epoch
   public addNonce(): this {
     this.addBody({ nonce: ((BigInt(new Date().getTime()) - 1420070400000n) << 22n).toString() });
     return this;
   }
 
+  // Use default headers for the request
   public useDefaultHeaders(without?: string[]): this {
     if (!this._headers) this._headers = {};
     without = without ?? [];
@@ -76,6 +84,7 @@ export class Request {
     return this;
   }
 
+  // Adds headers to the request
   public addHeaders(headers?: { [key: string]: string }): this {
     if (!headers) return this;
     
@@ -84,6 +93,7 @@ export class Request {
     return this;
   }
 
+  // Returns the request data
   public build() {
     if (Object.keys(this._query).length) var query = "?" + Object.entries(this._query).map(([key, value]) => `${key}=${value}`).join("&");
     const url = encodeURI(this._url + (query! ?? ""));

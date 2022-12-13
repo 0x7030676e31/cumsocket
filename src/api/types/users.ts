@@ -25,7 +25,7 @@ export interface User {
     accent_color: number | null;
     banner?: string | null;
     theme_colors?: [ number, number ] | null;
-    popout_animation_particle_type?: null | number; // idk what this is so I guess its number
+    popout_animation_particle_type?: null | number; // Idk what this is so I guess its number
     emoji?: string | null;
   };
   application?: Application;

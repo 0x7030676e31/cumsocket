@@ -1,5 +1,7 @@
 import Core, { types, apiTypes } from "../core/index.js";
 
+// Copy attachments (images and videos) from selected channels and send them via webhook
+
 export default class Bridge {
   public readonly ctx!: Core;
   public readonly id: string = "bridge";
@@ -15,22 +17,24 @@ export default class Bridge {
 
   @Core.listen("MESSAGE_CREATE")
   public async onMessageCreate(msg: types.MESSAGE_CREATE): Promise<void> {
+    // Check if message is from selected channel and not from bot
     if (!this._from.includes(msg.channel_id) || msg.author.bot) return;
   
-    // get all attachments from the message
+    // Get all attachments from the message
     const urls = msg.embeds.filter(v => /image|video/.test(v.type!)).map(v => v.url);
     const att = msg.attachments.filter(v => /^(image|video)/.test(v.content_type!)).map(v => v.url);
 
-    // create list of attachments
+    // Create list of attachments
     const content = [...urls, ...att].join("\n");
     if (!content) return;
 
-    // send message to webhook
-    this.ctx.api.webhooks.execute(...this._webhook, { content, username: msg.author.username, avatar_url: this.getAvatar(msg.author) });
+    // Send message to webhook
+    const avatar = this.getAvatar(msg.author);
+    this.ctx.api.webhooks.execute(...this._webhook, { content, username: msg.author.username, ...(avatar && { avatar }) });
   }
 
-  // get avatar url from user
-  private getAvatar(author: apiTypes.users.Author): string {
-    return author.avatar ? `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.png` : "https://i.pinimg.com/736x/91/ce/69/91ce69b6c7c6ab40b1d35808979394a5.jpg";
+  // Get avatar url from user
+  private getAvatar(author: apiTypes.users.Author): string | null {
+    return author.avatar ? `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.png` : null;
   }
 }

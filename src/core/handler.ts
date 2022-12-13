@@ -3,21 +3,27 @@ import { EventEmitter } from "events";
 import op2 from "../op2.json" assert { type: "json" };
 import WebSocket from "ws";
 
+// Payload structure recieved from the gateway
 type payload = { op: number, d?: any, s?: number, t?: string };
 class Handler extends EventEmitter {
   protected readonly url = "wss://gateway.discord.gg/?encoding=json&v=10";
   protected readonly token: string;
 
+  // Websocket connection
   private _ws!: WebSocket;
+  // Interval object for heartbeats
   private _hbInterval!: NodeJS.Timer;
+  // Sequence number
   private _seq: number = 0;
+  // Session ID (used for resuming)
   private _sessionId: string = "";
+  // Resume URL (used for resuming)
   private _resumeUrl: string = "";
 
-  // codes that should cause the client to exit
+  // Codes that should cause the client to close the connection
   private readonly _badCodes: number[] = [ 4004, 4010, 4011, 4013, 4014 ];
   
-  // used in the log method
+  // Used in the log method to display uptime
   public readonly initDate: number = Date.now();
 
   constructor(token: string) {
@@ -27,20 +33,21 @@ class Handler extends EventEmitter {
     this.connect();
   }
 
-  // handle the websocket opening event
+  // Handle the websocket on open event
   private async onOpen(re: boolean): Promise<void> {
     this.emit("open", re);
     this.log("Gateway", "Connection established.");
     
+    // Sent authentication payload
     this._ws.send(this.getInitPayload(re));
   }
 
-  // handle an incoming message payload
+  // Handle an incoming message payload
   private async onMessage(data: any): Promise<any> {
     const { op, d, t }: payload = JSON.parse(data);
+    
     switch (op) {
-      // classic dispatch
-      case 0:
+      case OpCodes.DISPATCH:
         this._seq++;
         this.emit("dispatch", d, t!);
         
@@ -57,43 +64,43 @@ class Handler extends EventEmitter {
         }
         break;
 
-      // client should send a heartbeat rn
+      // Client should send a heartbeat rn
       case 1:
         this.heartbeat();
         break;
 
-      // client have to reconnect
+      // Client have to reconnect
       case 7:
         this.log("Gateway", "Server is requesting a reconnect.");
         this.connect(true);
         break;
 
-      // session has been invalidated and client should eventaully reconnect
-      case 9:
+      // Session has been invalidated and client should eventaully reconnect
+      case OpCodes.INVALID_SESSION:
         this.log("Gateway", "Session invalidated.");
         this.connect(d === true);
         break;
 
       // "Hello" message
-      case 10:
+      case OpCodes.HELLO:
         this.log("Gateway", "Discord is saying hello!");
         this._hbInterval = setInterval(this.heartbeat.bind(this), d.heartbeat_interval);
         break;
 
-      // heartbeat ack
-      case 11:
+      // Heartbeat ack message
+      case OpCodes.HEARTBEAT_ACK:
         this.emit("ack", this._seq);
         break;
     }
   }
 
-  // send a heartbeat payload
+  // Send a heartbeat payload
   private async heartbeat(): Promise<void> {
     this.emit("heartbeat", this._seq);
-    this._ws?.send(JSON.stringify({ op: 1, d: this._seq }));
+    this._ws?.send(JSON.stringify({ op: OpCodes.HEARTBEAT, d: this._seq }));
   }
 
-  // handle the websocket closing event
+  // Handle the websocket closing event
   private async onClose(code: number): Promise<void> {
     this.emit("close", code);
     if (this._badCodes.includes(code)) {
@@ -105,10 +112,10 @@ class Handler extends EventEmitter {
     this.connect();
   }
 
-  // generate an init payload for creating/resuming a session
+  // Generate an init payload for creating/resuming a session
   private getInitPayload(re: boolean = false): string {
     if (re) return JSON.stringify({
-      op: 6,
+      op: OpCodes.RESUME,
       d: {
         token: this.token,
         session_id: this._sessionId,
@@ -121,49 +128,55 @@ class Handler extends EventEmitter {
     return JSON.stringify(payload);
   }
 
-  // connect to the gateway
+  // (Re) Connect to the gateway
   private async connect(re: boolean = false): Promise<void> {
     if (!re) this._seq = 0;
     this.prepare();
 
+    // Create a new websocket connection
     const ws = this._ws = new WebSocket(re ? this._resumeUrl : this.url);
-
     this.log("Gateway", re ? "Attempting to reconnect..." : "Connecting...");
 
+    // Add event listeners
     ws.once("open", this.onOpen.bind(this, re));
     ws.once("close", this.onClose.bind(this));
     ws.on("message", this.onMessage.bind(this));
   }
 
-  // remove all listeners and clear the heartbeat interval
+  // Remove all listeners and clear the heartbeat interval - do things before reconnecting
   private prepare(): void {
     clearInterval(this._hbInterval);
     this._ws?.removeAllListeners();
     this._ws?.close();
   }
 
-  // disconnect from the gateway and exit
-  public async disconnect(): Promise<void> {
+
+  // Disconnect from the gateway and eventaully exit the process
+  public async disconnect(reconnect: boolean = false): Promise<void> {
     this.log("Gateway", "Disconnecting...");
     this._ws.close(1000);
-    process.exit(0);
+    if (reconnect) this.connect();
+    else process.exit(0);
   }
 
+
+  // Update the client's presence (op 3)
   public async presenceUpdate(presence: Presence): Promise<void> {
-    this._ws.send(JSON.stringify({ op: 3, d: presence }));
+    this._ws.send(JSON.stringify({ op: OpCodes.PRESENCE_UPDATE, d: presence }));
   }
 
-  // update user voice settings
+  // Update user voice settings (op 4)
   public async voiceStateUpdate(payload: VoiceState): Promise<void> {
     this._ws.send(JSON.stringify({ op: 4, d: payload }));
   }
 
-  // confirm that user opened direct message channel
+  // Confirm that user opened direct message channel, required to not get banned (op 13, undocumented)
   public async dmConfirmation(id: string): Promise<void> {
-    this._ws.send(JSON.stringify({ op: 13, d: { channel_id: id } }));
+    this._ws.send(JSON.stringify({ op: OpCodes.DM_CONFIRMATION, d: { channel_id: id } }));
   }
 
-  // log a message to the console
+
+  // Log a message to the console displaying the uptime
   public log(header: string, msg: string): void {
     let uptime = (Date.now() - this.initDate) / 1000;
     
@@ -178,6 +191,22 @@ class Handler extends EventEmitter {
 
     console.log(`(${time}) [${header}] ${msg}`);
   }
+}
+
+enum OpCodes {
+  DISPATCH = 0,
+  HEARTBEAT = 1,
+  IDENTIFY = 2,
+  PRESENCE_UPDATE = 3,
+  VOICE_STATE_UPDATE = 4,
+  RESUME = 6,
+  RECONNECT = 7,
+  REQUEST_GUILD_MEMBERS = 8,
+  INVALID_SESSION = 9,
+  HELLO = 10,
+  HEARTBEAT_ACK = 11,
+  // UNKNOWN = 12,
+  DM_CONFIRMATION = 13,
 }
 
 interface Presence {
