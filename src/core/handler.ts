@@ -195,7 +195,8 @@ class Handler extends EventEmitter {
     const blue = "\x1b[38;2;65;105;225m";
     const green = "\x1b[38;2;50;205;50m";
 
-    console.log(`(${yellow}${time}${reset}) [${blue}${header}${reset}] ${green}${msg}${reset}`);
+    if (process.env.DISABLE_FORMATTING === "true") console.log(`(${time}) [${header}] ${msg}`);
+    else console.log(`(${yellow}${time}${reset}) [${blue}${header}${reset}] ${green}${msg}${reset}`);
   }
 }
 
