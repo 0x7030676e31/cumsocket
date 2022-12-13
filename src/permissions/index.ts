@@ -34,10 +34,10 @@ export default class Permissions {
   public async load(ctx: Core): Promise<void> {
     // Register listeners
     ctx.on("dispatch", this.dispatch.bind(this));
-  
-    // 
+      
     // Load permissions from database
-    // 
+    ctx.log("Permissions", "Fetching permissions from database...");
+    const fetchingMs = Date.now();
 
     // Create tables if not exists
     await ctx.dbQuery("CREATE TABLE IF NOT EXISTS permsMain (id serial, module varchar(16), state boolean);");
@@ -71,7 +71,7 @@ export default class Permissions {
       rulesCount++;
     });
 
-    ctx.log("Permissions", `Successfully loaded ${rulesCount} rules for ${modulesCount - missing.length} modules.`);
+    ctx.log("Permissions", `Successfully loaded ${rulesCount} rules for ${modulesCount - missing.length} modules. Took ${Date.now() - fetchingMs}ms`);
   }
 
   public async ready(ctx: Core): Promise<void> {

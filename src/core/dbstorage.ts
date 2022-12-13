@@ -10,10 +10,13 @@ export default class DBStorage {
 
   // Load database entries into local cache
   public async loadDB(): Promise<void> {
+    this.ctx.log("DBStorage", "Fetching database entries into local cache...");
+    const fetchingMs = Date.now();
+
     await this.ctx.dbQuery("CREATE TABLE IF NOT EXISTS storage (key TEXT PRIMARY KEY, value TEXT);");
     const res = (await this.ctx.dbQuery("SELECT * FROM storage;"))!.rows as [{ key: string, value: string }];
     res.forEach(v => this.local.set(v.key, v.value));
-    this.ctx.log("DBStorage", `Loaded ${res.length} entries from the database.`);
+    this.ctx.log("DBStorage", `Loaded ${res.length} entries from the database. Took ${Date.now() - fetchingMs}ms`);
   }
 
   // Get a value from the local cache
@@ -61,7 +64,7 @@ export default class DBStorage {
   // Add a value to a numeric value
   public async numericIncr(key: string, value: number = 1): Promise<number> {
     const raw = this.local.get(key);
-    if (raw === undefined || Number.isNaN(raw)) throw new Error(`Storage Error: Cannot increment non-numeric value '${key}'`);
+    if (raw === undefined || Number.isNaN(raw)) throw new Error(`Storage Error: Cannot increment non-numeric value "${key}"`);
     const num = Number(raw) + value;
     await this.set(key, num.toString());
     return num;
@@ -70,7 +73,7 @@ export default class DBStorage {
   // Subtract a value from a numeric value
   public async numericDecr(key: string, value: number = 1): Promise<number> {
     const raw = this.local.get(key);
-    if (raw === undefined || Number.isNaN(raw)) throw new Error(`Storage Error: Cannot decrement non-numeric value '${key}'`);
+    if (raw === undefined || Number.isNaN(raw)) throw new Error(`Storage Error: Cannot decrement non-numeric value "${key}"`);
     const num = Number(raw) - value;
     await this.set(key, num.toString());
     return num;
@@ -79,7 +82,7 @@ export default class DBStorage {
   // Get a numeric value
   public numericGet(key: string): number {
     const raw = this.local.get(key);
-    if (raw === undefined || Number.isNaN(raw)) throw new Error(`Storage Error: Cannot get non-numeric value '${key}'`);
+    if (raw === undefined || Number.isNaN(raw)) throw new Error(`Storage Error: Cannot get non-numeric value "${key}"`);
     return Number(raw);
   }
 
@@ -104,7 +107,7 @@ export default class DBStorage {
   // Toggle a boolean value
   public async booleanToggle(key: string): Promise<boolean> {
     const raw = this.local.get(key)?.toLowerCase();
-    if (raw === undefined || !/^(true|false)$/.test(raw)) throw new Error(`Storage Error: Cannot toggle non-boolean value '${key}'`);
+    if (raw === undefined || !/^(true|false)$/.test(raw)) throw new Error(`Storage Error: Cannot toggle non-boolean value "${key}"`);
     const bool = raw === "true" ? false : true;
     await this.set(key, bool.toString());
     return bool;
@@ -118,14 +121,14 @@ export default class DBStorage {
   // Get a boolean value
   public booleanGet(key: string): boolean {
     const raw = this.local.get(key)?.toLowerCase();
-    if (raw === undefined || !/^(true|false)$/.test(raw)) throw new Error(`Storage Error: Cannot get non-boolean value '${key}'`);
+    if (raw === undefined || !/^(true|false)$/.test(raw)) throw new Error(`Storage Error: Cannot get non-boolean value "${key}"`);
     return raw === "true" ? true : false;
   }
 
   // Check if a boolean value is true
   public booleanIsTrue(key: string): boolean {
     const raw = this.local.get(key)?.toLowerCase();
-    if (raw === undefined || !/^(true|false)$/.test(raw)) throw new Error(`Storage Error: Cannot check non-boolean value '${key}'`);
+    if (raw === undefined || !/^(true|false)$/.test(raw)) throw new Error(`Storage Error: Cannot check non-boolean value "${key}"`);
     return raw === "true" ? true : false;
   }
 
@@ -135,7 +138,7 @@ export default class DBStorage {
   // Append a string to a string value
   public async stringAppend(key: string, value: string): Promise<string> {
     const raw = this.local.get(key);
-    if (raw === undefined) throw new Error(`Storage Error: Cannot append to non-string value '${key}'`);
+    if (raw === undefined) throw new Error(`Storage Error: Cannot append to non-string value "${key}"`);
     const str = raw + value;
     await this.set(key, str);
     return str;
@@ -144,7 +147,7 @@ export default class DBStorage {
   // Prepend a string to a string value
   public async stringPrepend(key: string, value: string): Promise<string> {
     const raw = this.local.get(key);
-    if (raw === undefined) throw new Error(`Storage Error: Cannot prepend to non-string value '${key}'`);
+    if (raw === undefined) throw new Error(`Storage Error: Cannot prepend to non-string value "${key}"`);
     const str = value + raw;
     await this.set(key, str);
     return str;

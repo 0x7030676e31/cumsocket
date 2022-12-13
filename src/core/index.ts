@@ -72,6 +72,7 @@ export default class Core extends Handler {
 
     // Execute ready method for all modules
     this._modules.forEach(v => v.ready?.(this));
+    this.log("Core", `Loaded ${Object.values(this._eventListeners).map(v => v.length).reduce((a, b) => a + b, 0)} listeners for ${this._modules.length} modules.`);
   }
 
   // Handle incoming dispatches when permissions are disabled
@@ -83,7 +84,7 @@ export default class Core extends Handler {
   protected async loadModules(dir: string): Promise<void> {
     // Check if directory exists
     const path = `./build/${dir}`;
-    if (!fs.existsSync(path)) throw new Error(`Failed to load modules: '${path}' does not exist.`);
+    if (!fs.existsSync(path)) throw new Error(`Failed to load modules: "${path}" does not exist.`);
 
     // Get all files in directory
     const files = fs.readdirSync(path, { withFileTypes: true });
@@ -98,7 +99,7 @@ export default class Core extends Handler {
   protected async loadModule(file: string): Promise<Module | void> {
     // Check if module exists
     const filename = file + (file.endsWith(".js") ? "" : ".js");
-    if (!fs.existsSync(`./build/${filename}`)) throw new Error(`Failed to load module: '${file}' does not exist.`);
+    if (!fs.existsSync(`./build/${filename}`)) throw new Error(`Failed to load module: "${file}" does not exist.`);
 
     // Import module
     const module = (await import(`../${filename}`)).default;
@@ -109,30 +110,30 @@ export default class Core extends Handler {
     
     // Validate module
     if (instance.ignore === true) return;
-    if (!/^[a-zA-Z_]{1,16}$/.test(instance.id)) throw new Error(`Failed to load module: '${instance.id}' is not a valid id.`);
-    if (this.idList().includes(instance.id)) throw new Error(`Failed to load module: '${instance.id}' is already loaded.`);
+    if (!/^[a-zA-Z_]{1,16}$/.test(instance.id)) throw new Error(`Failed to load module: "${instance.id}" is not a valid id.`);
+    if (this.idList().includes(instance.id)) throw new Error(`Failed to load module: "${instance.id}" is already loaded.`);
 
     // Check required env variables
     if (instance.env) {
       // Check if env is an object
-      if (typeof instance.env !== "object") throw new Error(`Failed to load module: '${instance.id}.env' is not an object.`);
+      if (typeof instance.env !== "object") throw new Error(`Failed to load module: "${instance.id}.env" is not an object.`);
       
       // If env is an array, check if all variables are defined
-      if (instance.env instanceof Array) instance.env.forEach(v => process.env[v] === undefined && err(`Warning: '${instance.id}' requires env variable '${v}'`));
+      if (instance.env instanceof Array) instance.env.forEach(v => process.env[v] === undefined && err(`Warning: "${instance.id}" requires env variable "${v}"`));
       
       // If env is an object, check if all variables are defined and of the correct type
       else Object.entries(instance.env).forEach(([key, value]) => {
         // Check if variable is defined
-        process.env[key] === undefined && err(`Failed to load module: '${instance.id}' requires env variable '${key}'.`);
+        process.env[key] === undefined && err(`Failed to load module: "${instance.id}" requires env variable "${key}".`);
         
         // Check if variable is of the correct type
         switch (value) {
           case "number":
-            if (Number.isNaN(process.env[key])) err(`Failed to load module: '${instance.id}' requires env variable '${key}' to be a number.`);
+            if (Number.isNaN(process.env[key])) err(`Failed to load module: "${instance.id}" requires env variable "${key}" to be a number.`);
             break;
 
           case "boolean":
-            if (!/^(true|false)$/i.test(process.env[key]!)) err(`Failed to load module: '${instance.id}' requires env variable '${key}' to be a boolean.`);
+            if (!/^(true|false)$/i.test(process.env[key]!)) err(`Failed to load module: "${instance.id}" requires env variable "${key}" to be a boolean.`);
             break;
         }
       });
@@ -156,7 +157,7 @@ export default class Core extends Handler {
 
     // Add module to list of loaded modules
     this._modules.push(instance);
-    this.log("Core", `Successfully loaded module '${instance.id}' with ${listeners.length} listeners.`);
+    this.log("Core", `Successfully loaded module "${instance.id}" with ${listeners.length} listeners.`);
 
     // Return module instance
     return instance;
@@ -164,7 +165,7 @@ export default class Core extends Handler {
 
   // Check if object is a class constructor, used to validate modules
   private isClass(v: any): boolean {
-    return Boolean(v && typeof v === "function" && v.prototype && !Object.getOwnPropertyDescriptor(v, 'prototype')?.writable);
+    return Boolean(v && typeof v === "function" && v.prototype && !Object.getOwnPropertyDescriptor(v, "prototype")?.writable);
   }
 
 

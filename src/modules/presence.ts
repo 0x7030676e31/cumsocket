@@ -1,4 +1,5 @@
 import Core, { env } from "../core/index.js";
+import fetch from "node-fetch";
 
 // Basic rich presence module for displaying infomations in the bot's status
 
@@ -7,6 +8,10 @@ export default class Presence {
   public readonly id: string = "presence";
   public readonly env: string[] = ["presence_refresh_rate"];
 
+  // Repository to get commits from
+  private readonly repo: string = "0x7030676e31/cumsocket";
+  // How many commits repository has
+  private commits: number = 0;
   // How often to update presence (in miliseconds)
   private refreshRate!: number;
   // Current state of the presence (what to display)
@@ -20,9 +25,28 @@ export default class Presence {
     this.start = Date.now();
     this.refreshRate = +process.env.presence_refresh_rate!;
     
+    // Fetch commits
+    this.fetchCommits();
+
     // Set the interval
     this.update();
     setInterval(this.update.bind(this), this.refreshRate);
+  }
+
+  private async fetchCommits(): Promise<void> {
+    this.ctx.log("Presence", "Fetching commits...");
+    const fetchingMs = Date.now();
+    
+    // Fetch contributors
+    const request = await fetch(`https://api.github.com/repos/${this.repo}/contributors`, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+
+    // Calculate commits
+    const contributors = await request.json() as { contributions: number }[];
+    this.commits = contributors.reduce((a, b) => a + b.contributions, 0);
+
+    this.ctx.log("Presence", `Fetched ${this.commits} commits through ${contributors.length} contributors. Took ${Date.now() - fetchingMs}ms`);
   }
 
 
@@ -45,6 +69,11 @@ export default class Presence {
 
       case 3:
         content = `Egged ${this.ctx.storage!.get("egg_count")} Times`;
+        break;
+        
+      // https://stackoverflow.com/questions/13627308/add-st-nd-rd-and-th-ordinal-suffix-to-a-number
+      case 4:
+        content = `${this.commits}${["st","nd","rd"][((this.commits + 90) % 100 - 10) % 10 - 1] || "th"} Cumsocket Build`;
         this.state = -1;
         break;
     }
@@ -63,7 +92,7 @@ export default class Presence {
       state: content!,
       timestamps: { start: this.start },
       buttons: [ "Check repository", "Eggs" ],
-      metadata: { button_urls: [ "https://github.com/0x7030676e31/cumsocket", "https://cdn.britannica.com/94/151894-050-F72A5317/Brown-eggs.jpg" ] },
+      metadata: { button_urls: [ `https://github.com/${this.repo}`, "https://cdn.britannica.com/94/151894-050-F72A5317/Brown-eggs.jpg" ] },
       type: 0,
     }] });
   }
