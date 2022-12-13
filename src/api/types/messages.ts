@@ -25,16 +25,19 @@ export interface Message {
 }
 
 export interface Attachment {
+  // id: string;
+  // filename: string;
+  // description?: string;
+  // content_type?: string;
+  // size: string;
+  // url: string;
+  // proxy_url: string;
+  // height?: number | null;
+  // width?: number | null;
+  // empheral?: boolean;
   id: string;
   filename: string;
-  description?: string;
-  content_type?: string;
-  size: string;
-  url: string;
-  proxy_url: string;
-  height?: number | null;
-  width?: number | null;
-  empheral?: boolean;
+  uploaded_filename: string;
 }
 
 export interface Component {
@@ -43,6 +46,9 @@ export interface Component {
 
 export interface SendPayload {
   content?: string;
+  attachments?: Attachment[];
+  type?: number;
+  channel_id?: string;
   tts?: boolean;
   sticker_ids?: string[];
   message_reference?: MessageReference;
@@ -87,4 +93,16 @@ export interface GetQuery {
 export interface ReactionQuery {
   location?: "Message",
   burst?: boolean;
+}
+
+export interface AttachmentSlotRequest {
+  filename: string;
+  file_size: number;
+  id?: string;
+}
+
+export interface AttachmentSlot {
+  id: number,
+  upload_filename: string,
+  upload_url: string,
 }

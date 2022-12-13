@@ -148,6 +148,11 @@ class Handler extends EventEmitter {
   }
 
 
+  // Get current sequence number
+  public get seq(): number {
+    return this._seq;
+  }
+
   // Disconnect from the gateway and eventaully exit the process
   public async disconnect(reconnect: boolean = false): Promise<void> {
     this.log("Gateway", "Disconnecting...");

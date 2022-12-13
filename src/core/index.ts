@@ -1,6 +1,6 @@
 import Client from "../client/index.js";
 import DBStorage from "./dbstorage.js";
-import * as api from "../api/index.js";
+import Api from "../api/index.js";
 import Handler from "./handler.js";
 import pg from "pg";
 import fs from "fs";
@@ -36,7 +36,7 @@ export default class Core extends Handler {
   private _db: pg.Client | null = null;
 
   // Components
-  public readonly api = api;
+  public readonly api = new Api(this);
   public readonly client = new Client(this);
   private readonly _dbStorage = new DBStorage(this);
 
