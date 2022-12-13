@@ -45,13 +45,15 @@ OpenAI changed how user is authenticated and added additional Cloudflare protect
 - Added a lot of new comments
 - Removed `chatgpt` module due to authentification issues (temporarily)
 - Extended Storage class
+- Extended env checking
+- Colored logs
 
 
 # Module structure
 ## Note that all modules are loaded from `modules` directory.
 ```typescript
 // Import core and types
-import Core, { types } from "../core/index.js";
+import Core, { types, env } from "../core/index.js";
 
 export default class ExampleModule {
   // Reference to Core instance, set by Core on load
@@ -62,6 +64,12 @@ export default class ExampleModule {
 
   // List of env vars that are required for the module to work
   public readonly env: string[] = ["EXAMPLE"];
+  // OR
+  public readonly env: env = {
+    example1: "string",
+    example2: "number",
+    example3: "boolean",
+  };
 
   // If set to true, module won't be loaded, default set to false
   public readonly ignore: boolean = false;
@@ -126,7 +134,7 @@ export default class Pong {
 ```
 
 # Worth mentioning
-- [Selfbottign Article](https://support.discord.com/hc/en-us/articles/115002192352-Automated-user-accounts-self-bots-)
+- [Selfbottign Article](https://support.discord.com/hc/en-us/articles/115002192352-Automated-user-accounts-self-bots-) and why it's forbidden
 - API wrapper is based on [discord official docs](https://discord.com/developers/docs/intro) and private experiments with discord API so it may be not 100% accurate
 - Bot is active 24/7, hosted on [Heroku](https://www.heroku.com/) and uses [Heroku Postgres](https://www.heroku.com/postgres) for database
 - Bot is automatically deployed on every push to `main` branch

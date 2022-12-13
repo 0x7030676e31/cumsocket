@@ -114,8 +114,28 @@ export default class Core extends Handler {
 
     // Check required env variables
     if (instance.env) {
-      if (!(instance.env instanceof Array)) throw new Error(`Failed to load module: '${instance.id}' env is not an array.`);
-      instance.env.forEach(v => process.env[v] === undefined && err(`Warning: '${instance.id}' requires env variable '${v}'`));
+      // Check if env is an object
+      if (typeof instance.env !== "object") throw new Error(`Failed to load module: '${instance.id}.env' is not an object.`);
+      
+      // If env is an array, check if all variables are defined
+      if (instance.env instanceof Array) instance.env.forEach(v => process.env[v] === undefined && err(`Warning: '${instance.id}' requires env variable '${v}'`));
+      
+      // If env is an object, check if all variables are defined and of the correct type
+      else Object.entries(instance.env).forEach(([key, value]) => {
+        // Check if variable is defined
+        process.env[key] === undefined && err(`Failed to load module: '${instance.id}' requires env variable '${key}'.`);
+        
+        // Check if variable is of the correct type
+        switch (value) {
+          case "number":
+            if (Number.isNaN(process.env[key])) err(`Failed to load module: '${instance.id}' requires env variable '${key}' to be a number.`);
+            break;
+
+          case "boolean":
+            if (!/^(true|false)$/i.test(process.env[key]!)) err(`Failed to load module: '${instance.id}' requires env variable '${key}' to be a boolean.`);
+            break;
+        }
+      });
     }
 
     // Apply context
@@ -182,11 +202,12 @@ export default class Core extends Handler {
   }
 }
 
-type Module = _Module & Object;
+export type Module = _Module & Object;
+export type env = string[] | { [key: string]: "string" | "number" | "boolean" };
 interface _Module {
   id: string;
   ctx: Core;
-  env?: string[];
+  env?: env;
   ignore?: boolean;
 
   constructor?: (ctx: Core) => Module;

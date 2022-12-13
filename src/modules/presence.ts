@@ -1,4 +1,4 @@
-import Core from "../core/index.js";
+import Core, { env } from "../core/index.js";
 
 // Basic rich presence module for displaying infomations in the bot's status
 

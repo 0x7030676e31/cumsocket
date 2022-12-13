@@ -22,9 +22,6 @@ class Handler extends EventEmitter {
 
   // Codes that should cause the client to close the connection
   private readonly _badCodes: number[] = [ 4004, 4010, 4011, 4013, 4014 ];
-  
-  // Used in the log method to display uptime
-  public readonly initDate: number = Date.now();
 
   constructor(token: string) {
     super();
@@ -175,9 +172,12 @@ class Handler extends EventEmitter {
     this._ws.send(JSON.stringify({ op: OpCodes.DM_CONFIRMATION, d: { channel_id: id } }));
   }
 
+  // Used in the log method to display uptime
+  public readonly initDate: number = Date.now();
 
   // Log a message to the console displaying the uptime
   public log(header: string, msg: string): void {
+    // Calculate uptime
     let uptime = (Date.now() - this.initDate) / 1000;
     
     const hours: number = Math.floor(uptime / 3600);
@@ -189,7 +189,13 @@ class Handler extends EventEmitter {
     const seconds: number = uptime;
     const time = `${hours ? `${hours}h ` : ""}${minutes ? `${minutes}m ` : ""}${seconds.toFixed(3)}s`;
 
-    console.log(`(${time}) [${header}] ${msg}`);
+    // Colors used in formatting
+    const reset = "\x1b[0m";
+    const yellow = "\x1b[38;2;189;183;107m"
+    const blue = "\x1b[38;2;65;105;225m";
+    const green = "\x1b[38;2;50;205;50m";
+
+    console.log(`(${yellow}${time}${reset}) [${blue}${header}${reset}] ${green}${msg}${reset}`);
   }
 }
 
