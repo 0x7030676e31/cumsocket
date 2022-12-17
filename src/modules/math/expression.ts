@@ -22,19 +22,19 @@ enum TokenType {
 export default class Expression {
   // Rules for tokenizing
   private static readonly rules: [string, RegExp][] = [
-    [ "space",     /^\s+/                 ],
-    [ "number",    /^0x[0-f]+(\.[0-f]+)?/ ],
-    [ "number",    /^0o[0-7]+(\.[0-7]+)?/ ],
-    [ "number",    /^0b[01]+(\.[01]+)?/   ],
-    [ "number",    /^\d+(\.\d+)?/         ],
-    [ "operator",  /^([+*\-%^]|\/{1,2})/  ],
-    [ "modifier",  /^(°|!{1,2})/          ],
-    [ "function",  /^[a-z]+(?=\()/        ],
-    [ "variable",  /^[a-z]+/              ],
-    [ "open",      /^\(/                  ],
-    [ "close",     /^\)/                  ],
-    [ "comma",     /^,/                   ],
-    [ "abs",       /^\|/                  ],
+    [ "space",     /^\s+/                       ],
+    [ "number",    /^0x[0-9a-f]+(\.[0-9a-f]+)?/ ],
+    [ "number",    /^0o[0-7]+(\.[0-7]+)?/       ],
+    [ "number",    /^0b[01]+(\.[01]+)?/         ],
+    [ "number",    /^\d+(\.\d+)?/               ],
+    [ "operator",  /^([+*\-%^]|\/{1,2})/        ],
+    [ "modifier",  /^(°|!{1,2})/                ],
+    [ "function",  /^[a-z]+(?=\()/              ],
+    [ "variable",  /^[a-z]+/                    ],
+    [ "open",      /^\(/                        ],
+    [ "close",     /^\)/                        ],
+    [ "comma",     /^,/                         ],
+    [ "abs",       /^\|/                        ],
   ];
 
   // Order of operations

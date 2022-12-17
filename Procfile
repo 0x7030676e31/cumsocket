@@ -1,1 +1,1 @@
-worker: node --no-warnings build/index.js
+worker: npm run run

@@ -40,7 +40,7 @@ export default class {
     ); 
   }
 
-  public uplaodFile(channel_id: string, files: { filename: string, content: Buffer | string }[]): Response<{ attachments: messages.AttachmentSlot[] }> {
+  public uplaodFiles(channel_id: string, ...files: { filename: string, content: Buffer | string }[]): Response<{ attachments: messages.AttachmentSlot[] }> {
     return new Response(new Promise<any>(async resolve => {
       const attachments = this.createAttachment(channel_id, files.map(v => ({
         filename: v.filename,
@@ -69,11 +69,11 @@ export default class {
         body: files[index].content,
       })));
     
-      resolve(slots);
+      resolve({ ok: true, data: { attachments: slots } });
     }));
   }
 
-  public async uploadFileUrl(files: { content: Buffer | string, url: string }[]): Promise<void> {
+  public async uploadFilesUrl(files: { content: Buffer | string, url: string }[]): Promise<void> {
     await Promise.all(files.map(v => fetch(v.url, {
       method: "PUT",
       headers: {

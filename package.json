@@ -5,7 +5,8 @@
   "main": "build/index.js",
   "type": "module",
   "scripts": {
-    "start": "rm -fr build && tsc && clear && node --no-warnings .",
+    "start": "rm -fr build && tsc && clear && npm run run",
+    "run": "node --no-warnings build/index.js",
     "postinstall": "npm run build",
     "build": "tsc"
   },
