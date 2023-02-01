@@ -26,7 +26,7 @@ export default class ChatGPT {
       apiKey: process.env.chatgpt_token!,
     });
 
-    // 
+    // Basic self recognition things
     this.mention = `<@${ctx.getIdFromToken()}>`;
     this.selfID = ctx.getIdFromToken();
 
@@ -36,22 +36,26 @@ export default class ChatGPT {
 
   @Core.listen("MESSAGE_CREATE")
   public async onMessage(msg: types.MESSAGE_CREATE): Promise<void> {
+    // Check for message correctness
     if (!msg.content.includes(this.mention) || this.selfID === msg.author.id) return;
 
+    // Get message content
     const content = msg.content.slice(this.mention.length).trim();
     if (!content) return;
 
+    // Don't allow to process more than 3 messages at the same time
     if (this.activeConvos >= 3) return this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, "🚎") as any;
-
     this.activeConvos++;
 
+    // Send placeholder message
     const response = await this.ctx.api.messages.respond(msg.channel_id, msg.id, "📨 Waiting for ChatGPT response...", false).get();
     if (!response.ok) {
       this.activeConvos--;
       this.ctx.log("ChatGPT", `There was an error with responding to the message on channel ${msg.channel_id}`);
       return;
-      
     }
+
+    // Fetch chatgpt message
     const gptResponse = await this.api.sendMessage(content, {
       ...(this.converations[msg.author.id] && {
         conversationId: this.converations[msg.author.id].convID,
@@ -59,15 +63,17 @@ export default class ChatGPT {
       }),
     });
 
-
+    // Check if response cointains some bad words etc and if message is too long to send normally
     const isBad = msg.guild_id === "391020510269669376" ? BAD_WORDS.test(gptResponse.text) || SCAM_PATTERN.test(gptResponse.text) : false;
     const tooLong = isBad || gptResponse.text.length > 2000;
 
+    // Upload file if needed
     if (tooLong) var files = await this.ctx.api.messages.uplaodFiles(msg.channel_id, {
       filename: "response.txt",
       content: gptResponse.text,
     }).unwrap();
 
+    // Update placeholder message
     this.ctx.api.messages.edit(msg.channel_id, response.data.id, {
       ...(!tooLong && { content: isBad ? "Chatgpt response contains some bad words which are unwelcome on this server <:flarogus:888054896769773600>" : gptResponse.text}),
       ...(files! && { attachments: [{
@@ -78,13 +84,12 @@ export default class ChatGPT {
       allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: false },
     });
 
+    // Update gpt_responses count, converation data and active converations
     this.ctx.storage?.numericIncr("gpt_responses");
-
     this.converations[msg.author.id] = {
       convID: gptResponse.conversationId!,
       messID: gptResponse.id!,
     }
-
     this.activeConvos--;
   }
 }
