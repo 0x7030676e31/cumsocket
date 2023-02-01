@@ -94,7 +94,7 @@ export default class Permissions {
     if (!this.perms[id]) return callback(payload, event);
 
     // Extract data from payload    // TODO: add more events, for now only message events are supported
-    let guild: string = '0';
+    let guild: string = "0";
     let channel: string = "0";
     let user: string;
     switch (event) {
@@ -277,7 +277,7 @@ export default class Permissions {
 
         // Update the database
         source.expr = newExpr;
-        await this.ctx.dbQuery("UPDATE permsRules SET expr = '$1' WHERE parent = $2 AND prior = $3;", newExpr.stringify(), parent, target);
+        await this.ctx.dbQuery("UPDATE permsRules SET expr = '$1' WHERE parent = $2 AND prior = $3;", newExpr.encode(), parent, target);
         this.respond(`Successfully appended expression to rule with prior ${target}.`);
         break;
 

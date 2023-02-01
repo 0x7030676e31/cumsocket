@@ -29,12 +29,12 @@ export default class Bridge {
     if (!content) return;
 
     // Send message to webhook
-    const avatar = this.getAvatar(msg.author);
-    this.ctx.api.webhooks.execute(...this._webhook, { content, username: msg.author.username, ...(avatar && { avatar }) });
+    const avatar_url = this.getAvatar(msg.author);
+    this.ctx.api.webhooks.execute(...this._webhook, { content, username: msg.author.username, ...(avatar_url && { avatar_url }) });
   }
 
   // Get avatar url from user
   private getAvatar(author: apiTypes.users.Author): string | null {
-    return author.avatar ? `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}.png` : null;
+    return author.avatar ? `https://cdn.discordapp.com/avatars/${author.id}/${author.avatar}` : null;
   }
 }
