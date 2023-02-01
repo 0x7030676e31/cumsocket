@@ -85,8 +85,6 @@ export default class ChatGPT {
       messID: gptResponse.id!,
     }
 
-    console.log(gptResponse.role);
-    
     this.activeConvos--;
   }
 }
