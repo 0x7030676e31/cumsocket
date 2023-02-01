@@ -23,7 +23,7 @@
   "author": "0x7030676e31",
   "license": "ISC",
   "dependencies": {
-    "chatgpt": "^2.1.1",
+    "chatgpt": "^4.0.2",
     "decimal.js": "^10.4.3",
     "dotenv": "^16.0.3",
     "node-fetch": "^3.3.0",

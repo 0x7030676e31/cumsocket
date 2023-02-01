@@ -1,9 +1,6 @@
 # Cumsocket v2
 Cumsocket is a "simple" Discord module based selfbot written in TypeScript that has features such as permissions management, Discord api, and more. Also worth mentioning is fact that selfbots are against Discord's ToS and can get you banned, even if you don't do anything harmful. If you really want to use selfbots, please don't do it on your main account. Enjoy my trashy code!
 
-## ChatGPT - December 12, 2022
-OpenAI changed how user is authenticated and added additional Cloudflare protection. Because of that, I had to disable ChatGPT module for now. There are temporary fixes, but they are not very reliable and it would be difficult to maintain ChatGPT module. When ChatGPT-Api will come with a fix, I will re-enable ChatGPT module.
-
 <!-- - [Example of usage](#Example-of-usage)  -->
 # Table of contents
 - [Features](#Features)
@@ -35,7 +32,7 @@ OpenAI changed how user is authenticated and added additional Cloudflare protect
 # Default modules
 - `egg` - Reacting to message containing eggs, and soon to images too! (Why? Idk)
 - `pong` - Simple ping pong module
-<!-- - `chatgpt` - Chatbot using GPT-3, responds to messages that start with mention (temporarlily disabled because of cloudflare auth issues) -->
+- `chatgpt` - Chatbot using GPT-3 model, responds to messages that start with mention
 - `bridge` - Used for copying attachments from multiple channels to one specified channel using webhooks
 - `math` - Simple math module that can evaluate simple math expressions
 - `permissions` - Permissions management module, used for managing permissions for other modules
@@ -43,7 +40,7 @@ OpenAI changed how user is authenticated and added additional Cloudflare protect
 
 # Latest changes
 - Added a lot of new comments
-- Removed `chatgpt` module due to authentification issues (temporarily)
+- Added chatgpt module again
 - Extended Storage class
 - Extended env checking
 - Colored logs
@@ -140,22 +137,12 @@ export default class Pong {
 - Bot is automatically deployed on every push to `main` branch
 - Bot doesn't make anything harmful to anyone, it's just a fun project (ok maybe copying attachments may be considered as potential safety harm, but it's listening only to specific channels where the main content is mostly memes and other stuff that doesn't require any privacy)
 
-# Dependencies
-- [chatgpt 2.1.1](https://github.com/transitive-bullshit/chatgpt-api) (Temporarily disabled due to authentification issues)
-- [decimal.js 10.4.3](https://github.com/MikeMcl/decimal.js)
-- [dotenv 16.0.3](https://github.com/motdotla/dotenv)
-- [node-fetch 3.3.0](https://github.com/node-fetch/node-fetch)
-- [pg 8.8.0](https://github.com/brianc/node-postgres)
-- [ws 8.10.0](https://github.com/websockets/ws)
-<!-- - [zeromq 6.0.0-beta.16](https://github.com/zeromq/zeromq.js) -->
-
 ### Requirements
 - [typescript 4.9.4](https://github.com/Microsoft/TypeScript)
 - [node 19.x](https://github.com/nodejs/node)
 
 # Future plans
 My goal was to create something like environment for module based selfbot. Over time maybe I will add more modules and features like client like data manager. I'll maintain this project as long as I can but discord likes to change api in a rather strange way. As long as I can, I'll try to keep this project up to date and alive.
-
 
 <br>
 <br>

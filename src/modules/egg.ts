@@ -12,8 +12,7 @@ export default class Egg {
   private self!: string;
   // Chance of getting a rare egg
   private chance!: number;
-  // Egg count
-  private count?: number;
+
   private trackCount: boolean = false;
 
 
@@ -26,9 +25,8 @@ export default class Egg {
     const storage = ctx.storage;
     if (!storage) return;
 
-    // Get egg count from storage
+    // Set egg count in storage
     await storage.setIfNotExists("egg_count", "0");
-    this.count = storage.numericGet("egg_count");
     this.trackCount = true;
   }
 
@@ -80,7 +78,7 @@ export default class Egg {
     this.ctx.api.messages.reactionAdd(channel, message, this.getEgg());
     if (!this.trackCount) return;
 
-    this.count = await this.ctx.storage!.numericIncr("egg_count");
+    await this.ctx.storage!.numericIncr("egg_count");
   }
 
   // Remove egg reaction from the message
@@ -88,6 +86,6 @@ export default class Egg {
     this.ctx.api.messages.reactionDelete(channel, message, egg);
     if (!this.trackCount) return;
 
-    this.count = await this.ctx.storage!.numericDecr("egg_count");
+    await this.ctx.storage!.numericDecr("egg_count");
   }
 }

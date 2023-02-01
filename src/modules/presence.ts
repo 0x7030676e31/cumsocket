@@ -1,4 +1,4 @@
-import Core, { env } from "../core/index.js";
+import Core from "../core/index.js";
 import fetch from "node-fetch";
 
 // Basic rich presence module for displaying infomations in the bot's status
@@ -70,9 +70,13 @@ export default class Presence {
       case 3:
         content = `Egged ${this.ctx.storage!.get("egg_count")} Times`;
         break;
+
+      case 4:
+        content = `Answered ${this.ctx.storage?.get("gpt_responses")} questions`
+        break;
         
       // https://stackoverflow.com/questions/13627308/add-st-nd-rd-and-th-ordinal-suffix-to-a-number
-      case 4:
+      case 5:
         content = `${this.commits}${["st","nd","rd"][((this.commits + 90) % 100 - 10) % 10 - 1] || "th"} Cumsocket Build`;
         this.state = -1;
         break;
