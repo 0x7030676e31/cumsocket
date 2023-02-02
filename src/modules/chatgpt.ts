@@ -4,6 +4,8 @@ import { ChatGPTAPI } from "chatgpt";
 const BAD_WORDS = /(?<![a-zA-Z])(?:cum|semen|cock|pussy|cunt|nigg.r)(?![a-zA-Z])/;
 const SCAM_PATTERN = /stea.*co.*\\.ru|http.*stea.*c.*\\..*trad|csgo.*kni[fv]e|cs.?go.*inventory|cs.?go.*cheat|cheat.*cs.?go|cs.?go.*skins|skins.*cs.?go|stea.*com.*partner|скин.*partner|steamcommutiny|di.*\\.gift.*nitro|http.*disc.*gift.*\\.|free.*nitro.*http|http.*free.*nitro.*|nitro.*free.*http|discord.*nitro.*free|free.*discord.*nitro|@everyone.*http|http.*@everyone|discordgivenitro|http.*gift.*nitro|http.*nitro.*gift|http.*n.*gift|бесплат.*нитро.*http|нитро.*бесплат.*http|nitro.*http.*disc.*nitro|http.*click.*nitro|http.*st.*nitro|http.*nitro|stea.*give.*nitro|discord.*nitro.*steam.*get|gift.*nitro.*http|http.*discord.*gift|discord.*nitro.*http|personalize.*your*profile.*http|nitro.*steam.*http|steam.*nitro.*http|nitro.*http.*d|http.*d.*gift|gift.*http.*d.*s|discord.*steam.*http.*d|nitro.*steam.*http|steam.*nitro.*http|dliscord.com|free.*nitro.*http|discord.*nitro.*http|@everyone.*http|http.*@everyone|@everyone.*nitro|nitro.*@everyone|discord.*gi.*nitro/i;
 
+const RESTART = /^(--|:)(restart|reset|kill|new)$/i;
+
 export default class ChatGPT {
   public readonly ctx!: Core;
   public readonly id: string = "chatgpt";
@@ -42,6 +44,13 @@ export default class ChatGPT {
     // Get message content
     const content = msg.content.slice(this.mention.length).trim();
     if (!content) return;
+
+    // Check if user wants to restart converation
+    if (RESTART.test(content)) {
+      delete this.converations[msg.author.id];
+      this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, "🔄");
+      return;
+    }
 
     // Don't allow to process more than 3 messages at the same time
     if (this.activeConvos >= 3) return this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, "🚎") as any;
