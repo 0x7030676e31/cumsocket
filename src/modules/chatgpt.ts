@@ -37,7 +37,7 @@ export default class ChatGPT {
   @Core.listen("MESSAGE_CREATE")
   public async onMessage(msg: types.MESSAGE_CREATE): Promise<void> {
     // Check for message correctness
-    if (!msg.content.includes(this.mention) || this.selfID === msg.author.id) return;
+    if (!msg.content.startsWith(this.mention) || this.selfID === msg.author.id) return;
 
     // Get message content
     const content = msg.content.slice(this.mention.length).trim();
@@ -67,23 +67,6 @@ export default class ChatGPT {
     const isBad = msg.guild_id === "391020510269669376" ? BAD_WORDS.test(gptResponse.text) || SCAM_PATTERN.test(gptResponse.text) : false;
     const tooLong = isBad || gptResponse.text.length > 2000;
 
-    // Upload file if needed
-    if (tooLong) var files = await this.ctx.api.messages.uplaodFiles(msg.channel_id, {
-      filename: "response.txt",
-      content: gptResponse.text,
-    }).unwrap();
-
-    // Update placeholder message
-    this.ctx.api.messages.edit(msg.channel_id, response.data.id, {
-      ...(!tooLong && { content: isBad ? "Chatgpt response contains some bad words which are unwelcome on this server <:flarogus:888054896769773600>" : gptResponse.text}),
-      ...(files! && { attachments: [{
-        id: files.attachments[0].id.toString(),
-        filename: "response.txt",
-        uploaded_filename: files.attachments[0].upload_filename,
-      }] }),
-      allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: false },
-    });
-
     // Update gpt_responses count, converation data and active converations
     this.ctx.storage?.numericIncr("gpt_responses");
     this.converations[msg.author.id] = {
@@ -91,5 +74,31 @@ export default class ChatGPT {
       messID: gptResponse.id!,
     }
     this.activeConvos--;
+
+    // Upload file if needed
+    if (tooLong) var files = await this.ctx.api.messages.uplaodFiles(msg.channel_id, {
+      filename: "response.txt",
+      content: gptResponse.text,
+    }).get();
+
+    // Check if there was an error with uploading file
+    if (files!?.ok === false) {
+      this.ctx.api.messages.edit(msg.channel_id, response.data.id, {
+        content: "Response is too long to send normally and there was an error with uploading it as a file",
+        allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: false },
+      });
+      return;
+    }
+
+    // Update placeholder message
+    this.ctx.api.messages.edit(msg.channel_id, response.data.id, {
+      ...(!tooLong && { content: isBad ? "Chatgpt response contains some bad words which are unwelcome on this server <:flarogus:888054896769773600>" : gptResponse.text}),
+      ...(files! && { attachments: [{
+        id: files.data.attachments[0].id.toString(),
+        filename: "response.txt",
+        uploaded_filename: files.data.attachments[0].upload_filename,
+      }] }),
+      allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: false },
+    });
   }
 }
