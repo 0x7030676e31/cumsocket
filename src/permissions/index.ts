@@ -2,8 +2,8 @@ import Core, { listeners, callback, types } from "../core/index.js";
 import Expression from "./expression.js";
 
 // Database structure
-type dbMain = { id: number, module: string, state: boolean }[];
-type dbRules = { parent: number, state: boolean, prior: number, expr: string}[];
+type dbMain = { id: number, module: string, state: boolean };
+type dbRules = { parent: number, state: boolean, prior: number, expr: string};
 type perms = { [key: string]: { state: boolean, rules: { state: boolean, prior: number, expr: Expression, temp?: true }[] }};
 type meta = { user: string, channel: string, guild?: string, message: string };
 
@@ -44,8 +44,8 @@ export default class Permissions {
     await ctx.dbQuery("CREATE TABLE IF NOT EXISTS permsRules (parent integer, state boolean, prior smallint, expr text);");
     
     // Extract data from database
-    const permsMain: dbMain = (await ctx.dbQuery("SELECT * FROM permsMain;"))!.rows;
-    const permsRules: dbRules = (await ctx.dbQuery("SELECT * FROM permsRules;"))!.rows;
+    const permsMain = (await ctx.dbQuery<dbMain>("SELECT * FROM permsMain;"))!.rows;
+    const permsRules = (await ctx.dbQuery<dbRules>("SELECT * FROM permsRules;"))!.rows;
     
     // Insert missing modules
     const missing = ctx.idList().filter(id => !permsMain.some(v => v.module === id));

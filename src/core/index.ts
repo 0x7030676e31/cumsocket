@@ -177,7 +177,7 @@ export default class Core extends Handler {
   }
 
   // Send a formatted request to the database
-  public async dbQuery(query: string, ...args: any[]): Promise<pg.QueryResult<any> | null> {
+  public async dbQuery<T extends { [collumn: string]: any }>(query: string, ...args: any[]): Promise<pg.QueryResult<T> | null> {
     if (!this._db) return null;
     return this._db.query(query.replaceAll(/\$\d+/g, (v) => args[+v.slice(1) - 1] ?? "NULL"));
   }

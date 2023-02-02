@@ -39,9 +39,9 @@ Cumsocket is a "simple" Discord module based selfbot written in TypeScript that 
 - `presence` - Animated rich presence module, used to disaply rich presence on bot's profile
 
 # Latest changes
-- Added chatgpt module again
 - Fixed permissions append function
 - Fixed bridge avatar not showing
+- ChatGPT error handling
 
 
 # Module structure

@@ -1,19 +1,27 @@
 import Core, { types } from "../core/index.js";
-import { ChatGPTAPI } from "chatgpt";
+import { ChatGPTAPI, ChatGPTError } from "chatgpt";
 
 const BAD_WORDS = /(?<![a-zA-Z])(?:cum|semen|cock|pussy|cunt|nigg.r)(?![a-zA-Z])/;
 const SCAM_PATTERN = /stea.*co.*\\.ru|http.*stea.*c.*\\..*trad|csgo.*kni[fv]e|cs.?go.*inventory|cs.?go.*cheat|cheat.*cs.?go|cs.?go.*skins|skins.*cs.?go|stea.*com.*partner|скин.*partner|steamcommutiny|di.*\\.gift.*nitro|http.*disc.*gift.*\\.|free.*nitro.*http|http.*free.*nitro.*|nitro.*free.*http|discord.*nitro.*free|free.*discord.*nitro|@everyone.*http|http.*@everyone|discordgivenitro|http.*gift.*nitro|http.*nitro.*gift|http.*n.*gift|бесплат.*нитро.*http|нитро.*бесплат.*http|nitro.*http.*disc.*nitro|http.*click.*nitro|http.*st.*nitro|http.*nitro|stea.*give.*nitro|discord.*nitro.*steam.*get|gift.*nitro.*http|http.*discord.*gift|discord.*nitro.*http|personalize.*your*profile.*http|nitro.*steam.*http|steam.*nitro.*http|nitro.*http.*d|http.*d.*gift|gift.*http.*d.*s|discord.*steam.*http.*d|nitro.*steam.*http|steam.*nitro.*http|dliscord.com|free.*nitro.*http|discord.*nitro.*http|@everyone.*http|http.*@everyone|@everyone.*nitro|nitro.*@everyone|discord.*gi.*nitro/i;
 
 const RESTART = /^(--|:)(restart|reset|kill|new)$/i;
 
+type ChatGPTConvo = {
+  user_id: string;
+  conversation_id: string;
+  message_id: string;
+}
+
 export default class ChatGPT {
   public readonly ctx!: Core;
   public readonly id: string = "chatgpt";
-  public readonly env: string[] = [ "chatgpt_token" ];
+  public readonly env: string[] = [ "chatgpt_token", "chatgpt_timeout" ];
 
   private api!: ChatGPTAPI;
   private mention!: string;
   private selfID!: string;
+
+  private timeout!: number;
 
   private converations: { [key: string]: {
     convID: string;
@@ -28,12 +36,22 @@ export default class ChatGPT {
       apiKey: process.env.chatgpt_token!,
     });
 
+    // Set timeout
+    this.timeout = +process.env.chatgpt_timeout!;
+
     // Basic self recognition things
     this.mention = `<@${ctx.getIdFromToken()}>`;
     this.selfID = ctx.getIdFromToken();
 
     // Insert gpt_responses count to the database
-    await this.ctx.storage?.setIfNotExists("gpt_responses", "0");
+    await ctx.storage?.setIfNotExists("gpt_responses", "0");
+  
+    // Load converations from the database
+    ctx.dbQuery("CREATE TABLE IF NOT EXISTS chatgpt_conversations (user_id TEXT PRIMARY KEY, conversation_id TEXT, message_id TEXT);");
+    const rows = (await ctx.dbQuery<ChatGPTConvo>("SELECT * FROM chatgpt_conversations;"))!.rows;
+    for (const row of rows) this.converations[row.user_id] = { convID: row.conversation_id, messID: row.message_id };
+
+    this.ctx.log("ChatGPT", `Loaded ${rows.length} converations from the database`);
   }
 
   @Core.listen("MESSAGE_CREATE")
@@ -48,6 +66,7 @@ export default class ChatGPT {
     // Check if user wants to restart converation
     if (RESTART.test(content)) {
       delete this.converations[msg.author.id];
+      this.ctx.dbQuery("DELETE FROM chatgpt_conversations WHERE user_id = $1;", msg.author.id);
       this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, "🔄");
       return;
     }
@@ -65,16 +84,33 @@ export default class ChatGPT {
     }
 
     // Fetch chatgpt message
-    const gptResponse = await this.api.sendMessage(content, {
-      ...(this.converations[msg.author.id] && {
-        conversationId: this.converations[msg.author.id].convID,
-        parentMessageId: this.converations[msg.author.id].messID,
-      }),
-    });
+    try {
+      var gptResponse = await this.api.sendMessage(content, {
+        ...(this.converations[msg.author.id] && {
+          conversationId: this.converations[msg.author.id].convID,
+          parentMessageId: this.converations[msg.author.id].messID,
+        }),
+        timeoutMs: this.timeout,
+      });
+    } catch (e) {
+      // Update placeholder message
+      const { message, statusCode } = e as ChatGPTError;
+      this.ctx.api.messages.edit(msg.channel_id, response.data.id, {
+        content: `⚠️ There was an error with ChatGPT: ${message}${statusCode ? ` (code: ${statusCode})` : ""}`,
+        allowed_mentions: { parse: ["everyone", "roles", "users"], replied_user: false },
+      });
+
+      this.activeConvos--;
+      return;
+    }
 
     // Check if response cointains some bad words etc and if message is too long to send normally
     const isBad = msg.guild_id === "391020510269669376" ? BAD_WORDS.test(gptResponse.text) || SCAM_PATTERN.test(gptResponse.text) : false;
     const tooLong = isBad || gptResponse.text.length > 2000;
+
+    // Update converation data in the database
+    if (this.converations[msg.author.id] === undefined) this.ctx.dbQuery("INSERT INTO chatgpt_conversations (user_id, conversation_id, message_id) VALUES ('$1', '$2', '$3');", msg.author.id, gptResponse.conversationId!, gptResponse.id!);
+    else this.ctx.dbQuery("UPDATE chatgpt_conversations SET conversation_id = '$1', message_id = '$2' WHERE user_id = '$3';", gptResponse.conversationId!, gptResponse.id!, msg.author.id);
 
     // Update gpt_responses count, converation data and active converations
     this.ctx.storage?.numericIncr("gpt_responses");
