@@ -4,8 +4,11 @@ import { ChatGPTAPI, ChatGPTError } from "chatgpt";
 const BAD_WORDS = /(?<![a-zA-Z])(?:cum|semen|cock|pussy|cunt|nigg.r)(?![a-zA-Z])/;
 const SCAM_PATTERN = /stea.*co.*\\.ru|http.*stea.*c.*\\..*trad|csgo.*kni[fv]e|cs.?go.*inventory|cs.?go.*cheat|cheat.*cs.?go|cs.?go.*skins|skins.*cs.?go|stea.*com.*partner|скин.*partner|steamcommutiny|di.*\\.gift.*nitro|http.*disc.*gift.*\\.|free.*nitro.*http|http.*free.*nitro.*|nitro.*free.*http|discord.*nitro.*free|free.*discord.*nitro|@everyone.*http|http.*@everyone|discordgivenitro|http.*gift.*nitro|http.*nitro.*gift|http.*n.*gift|бесплат.*нитро.*http|нитро.*бесплат.*http|nitro.*http.*disc.*nitro|http.*click.*nitro|http.*st.*nitro|http.*nitro|stea.*give.*nitro|discord.*nitro.*steam.*get|gift.*nitro.*http|http.*discord.*gift|discord.*nitro.*http|personalize.*your*profile.*http|nitro.*steam.*http|steam.*nitro.*http|nitro.*http.*d|http.*d.*gift|gift.*http.*d.*s|discord.*steam.*http.*d|nitro.*steam.*http|steam.*nitro.*http|dliscord.com|free.*nitro.*http|discord.*nitro.*http|@everyone.*http|http.*@everyone|@everyone.*nitro|nitro.*@everyone|discord.*gi.*nitro/i;
 
-const RESTART = /^(--|:)(restart|reset|kill|new)$/i;
+const RESTART = /^[$:!#?.&@%] {,6}(restart|reset|r|kill|new)$/i;
 const ERROR = /^ChatGPT error \d+: /;
+
+const MSG_PREFIX = "You are ChatGPT, a large language model trained by OpenAI. You answer as concisely as possible for each response (e.g. don’t be verbose). It is very important that you answer as concisely as possible, so please remember this. If you are generating a list, do not have too many items. Keep the number of items short. Remind the user that he can reset the conversion using `$reset`.\n\n";
+const MSG_SUFFIX = "\n\nChatGPT:\n";
 
 type ChatGPTConvo = {
   user_id: string;
@@ -24,6 +27,7 @@ export default class ChatGPT {
   public readonly ctx!: Core;
   public readonly id: string = "chatgpt";
   public readonly env: string[] = [ "chatgpt_token", "chatgpt_timeout" ];
+  public readonly isImportant: boolean = true;
 
   private api!: ChatGPTAPI;
   private mention!: string;
@@ -102,6 +106,8 @@ export default class ChatGPT {
           parentMessageId: this.converations[msg.author.id].messID,
         }),
         timeoutMs: this.timeout,
+        promptPrefix: MSG_PREFIX,
+        promptSuffix: MSG_SUFFIX,
       });
     } catch (e) {
       // Update placeholder message

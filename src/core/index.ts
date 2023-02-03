@@ -158,7 +158,7 @@ export default class Core extends Handler {
 
     // Add module to list of loaded modules
     this._modules.push(instance);
-    this.log("Core", `Successfully loaded module "${instance.id}" with ${listeners.length} listeners.`);
+    this.log("Core", `Successfully loaded module "${instance.id}" with ${listeners.length} listeners.${instance.isImportant ? " (as important)" : ""}`);
 
     // Return module instance
     return instance;

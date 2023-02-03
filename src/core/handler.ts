@@ -109,6 +109,13 @@ class Handler extends EventEmitter {
     this.connect();
   }
 
+  // Handle the websocket error event
+  private async onError(error: Error): Promise<void> {
+    this.emit("error", error.message, error.cause);
+    this.log("Gatewat", `Websocket accured an error while trying to establish connection with reason: ${error.message}${error.cause ? `; (${error.cause})` : ""}`);
+    process.exit(1);
+  }
+
   // Generate an init payload for creating/resuming a session
   private getInitPayload(re: boolean = false): string {
     if (re) return JSON.stringify({
@@ -138,6 +145,7 @@ class Handler extends EventEmitter {
     ws.once("open", this.onOpen.bind(this, re));
     ws.once("close", this.onClose.bind(this));
     ws.on("message", this.onMessage.bind(this));
+    ws.on("error", this.onError.bind(this));
   }
 
   // Remove all listeners and clear the heartbeat interval - do things before reconnecting
@@ -265,6 +273,7 @@ type AsyncOr = Promise<void> | void;
 interface Events {
   open: (reconnecting: boolean) => AsyncOr;
   close: (code: number) => AsyncOr;
+  error: (message: string, cause?: unknown) => AsyncOr;
   ready: (data: events.READY) => AsyncOr;
   dispatch: (data: DispatchPayload, event: string) => AsyncOr;
   heartbeat: (seq: number) => AsyncOr;
