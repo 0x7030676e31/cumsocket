@@ -71,7 +71,7 @@ export default class Core extends Handler {
     await this.loadModules("modules");
 
     // Execute ready method for all modules
-    this._modules.forEach(v => v.ready?.(this));
+    this._modules.forEach(async v => v.isImportant ? await v.ready?.(this) : v.ready?.(this));
     this.log("Core", `Loaded ${Object.values(this._eventListeners).map(v => v.length).reduce((a, b) => a + b, 0)} listeners for ${this._modules.length} modules.`);
   }
 
@@ -143,7 +143,8 @@ export default class Core extends Handler {
     instance.ctx = this;
 
     // Execute load method
-    instance.load?.(this);
+    if (instance.isImportant) await instance.load?.(this);
+    else instance.load?.(this);
 
     // Register listeners for module
     const listeners = Core._listeners.filter(([object]) => object.isPrototypeOf(instance));
@@ -210,6 +211,7 @@ interface _Module {
   ctx: Core;
   env?: env;
   ignore?: boolean;
+  isImportant?: boolean;
 
   constructor?: (ctx: Core) => Module;
   ready?: (ctx: Core) => (Promise<void> | void);

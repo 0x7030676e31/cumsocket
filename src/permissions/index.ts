@@ -16,9 +16,9 @@ export default class Permissions {
   public readonly ctx!: Core;
   public readonly id = "permissions";
   public readonly env = ["DATABASE_URL"];
-  
-  private listeners: listeners = {};
+  public readonly isImportant = true;
 
+  private listeners: listeners = {};
   private perms: perms = {};
 
   // [id, parent]
@@ -34,7 +34,7 @@ export default class Permissions {
   public async load(ctx: Core): Promise<void> {
     // Register listeners
     ctx.on("dispatch", this.dispatch.bind(this));
-      
+    
     // Load permissions from database
     ctx.log("Permissions", "Fetching permissions from database...");
     const fetchingMs = Date.now();

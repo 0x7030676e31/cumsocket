@@ -41,8 +41,8 @@ Cumsocket is a "simple" Discord module based selfbot written in TypeScript that 
 # Latest changes
 - Fixed permissions append function
 - Fixed bridge avatar not showing
-- ChatGPT error handling
-
+- ChatGPT error handling (+ it's working again)
+- `isImportant` module property
 
 # Module structure
 ## Note that all modules are loaded from `modules` directory.
@@ -65,6 +65,9 @@ export default class ExampleModule {
     example2: "number",
     example3: "boolean",
   };
+
+  // If load and ready methods should be awaited
+  public readonly isImportant: boolean = true;
 
   // If set to true, module won't be loaded, default set to false
   public readonly ignore: boolean = false;
