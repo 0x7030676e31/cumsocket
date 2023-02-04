@@ -285,8 +285,8 @@ export default class Permissions {
       case "remove":
       case "delete":
         const range = groups.remove_range;
-        let count: number = 0;
-        
+        let count: number = perms.rules.length;
+
         if (range === "all") {
           count = perms.rules.length;
           await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1;", parent);
@@ -294,26 +294,24 @@ export default class Permissions {
         } else if (/^\d+$/.test(range)) {
           await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1 AND prior = $2;", parent, range);
           if (!perms.rules.some(v => v.prior === +range)) break;
-          count = 1;
           perms.rules.splice(perms.rules.findIndex(v => v.prior === +range), 1);
         } else if (/^\d+\.\.\d+/.test(range)) {
-          const [start, end] = range.split("..").map(v => +v);
+          const [ start, end ] = range.split("..").map(v => +v);
           await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1 AND prior BETWEEN $2 AND $3;", parent, start, end);
-          count = perms.rules.filter(v => v.prior >= start && v.prior <= end).length;
           perms.rules = perms.rules.filter(v => v.prior < start || v.prior > end);
         } else if (/^\.\.\d+/.test(range)) {
           const end = +range.slice(2);
           await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1 AND prior <= $2;", parent, end);
-          count = perms.rules.filter(v => v.prior <= end).length;
           perms.rules = perms.rules.filter(v => v.prior > end);
         } else {
           const start = +range.slice(2);
           await this.ctx.dbQuery("DELETE FROM permsRules WHERE parent = $1 AND prior >= $2;", parent, start);
-          count = perms.rules.filter(v => v.prior >= start).length;
           perms.rules = perms.rules.filter(v => v.prior < start);
         }
 
-        this.respond(`Successfully removed ${count} rules from module "${id}".`);
+        count -= perms.rules.length;
+        const s = count === 1 ? "" : "s";
+        this.respond(`Successfully removed ${count} rule${s} from module "${id}".`);
         break;
 
       // Reorder the rules by priority
