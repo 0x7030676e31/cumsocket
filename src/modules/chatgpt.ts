@@ -7,7 +7,7 @@ const SCAM_PATTERN = /stea.*co.*\\.ru|http.*stea.*c.*\\..*trad|csgo.*kni[fv]e|cs
 const RESTART = /^[$:!#?.&@%] {0,6}(restart|reset|r|kill|new)$/i;
 const ERROR = /^ChatGPT error \d+: /;
 
-const MSG_PREFIX = "You are ChatGPT, a large language model trained by OpenAI. You answer as concisely as possible for each response (e.g. don’t be verbose). It is very important that you answer as concisely as possible, so please remember this. Remind the user that he can reset the conversion using `$reset`.\n\n";
+const MSG_PREFIX = "You are ChatGPT, a large language model trained by OpenAI. It is very important that you answer as concisely as possible, so please remember this. Remind the user that he can reset the conversion using `$reset`.\n\n";
 const MSG_SUFFIX = "\n\nChatGPT:\n";
 
 type ChatGPTConvo = {
@@ -26,7 +26,7 @@ type GPTError = {
 export default class ChatGPT {
   public readonly ctx!: Core;
   public readonly id: string = "chatgpt";
-  public readonly env: string[] = [ "chatgpt_token", "chatgpt_timeout" ];
+  public readonly env: string[] = [ "chatgpt_token", "chatgpt_timeout", "chatgpt_max_conv" ];
   public readonly isImportant: boolean = true;
 
   private api!: ChatGPTAPI;
@@ -34,6 +34,7 @@ export default class ChatGPT {
   private selfID!: string;
 
   private timeout!: number;
+  private maxConv!: number;
 
   private converations: { [key: string]: {
     convID: string;
@@ -48,8 +49,9 @@ export default class ChatGPT {
       apiKey: process.env.chatgpt_token!,
     });
 
-    // Set timeout
+    // Set timeout and max convos
     this.timeout = +process.env.chatgpt_timeout!;
+    this.maxConv = +process.env.chatgpt_max_conv!;
 
     // Basic self recognition things
     this.mention = `<@${ctx.getIdFromToken()}>`;
@@ -87,7 +89,7 @@ export default class ChatGPT {
     }
 
     // Don't allow to process more than 3 messages at the same time
-    if (this.activeConvos >= 3) return this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, "🚎") as any;
+    if (this.activeConvos >= this.maxConv) return this.ctx.api.messages.reactionAdd(msg.channel_id, msg.id, "🚎") as any;
     this.activeConvos++;
 
     // Send placeholder message
@@ -110,6 +112,9 @@ export default class ChatGPT {
         promptSuffix: MSG_SUFFIX,
       });
     } catch (e) {
+      // Temporary
+      if (process.env.GPT_DEBUG === "true") console.log(e);
+
       // Update placeholder message
       let { message, statusCode } = e as ChatGPTError;
       const error = ERROR.exec(message);
