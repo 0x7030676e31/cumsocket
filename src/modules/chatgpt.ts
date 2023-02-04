@@ -112,9 +112,6 @@ export default class ChatGPT {
         promptSuffix: MSG_SUFFIX,
       });
     } catch (e) {
-      // Temporary
-      if (process.env.GPT_DEBUG === "true") console.log(e);
-
       // Update placeholder message
       let { message, statusCode } = e as ChatGPTError;
       const error = ERROR.exec(message);
