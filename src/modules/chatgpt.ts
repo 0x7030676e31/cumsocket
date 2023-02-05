@@ -68,7 +68,7 @@ export default class ChatGPT {
     this.ctx.log("ChatGPT", `Loaded ${rows.length} converations from the database`);
   }
 
-  @Core.listen("MESSAGE_CREATE", "MESSAGE_UPDATE")
+  @Core.listen("MESSAGE_CREATE")
   public async onMessage(msg: types.MESSAGE_CREATE): Promise<void> {
     // Check for message correctness
     if (!msg.content.startsWith(this.mention) || this.selfID === msg.author.id) return;
