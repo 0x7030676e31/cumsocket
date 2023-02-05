@@ -106,7 +106,7 @@ class Handler extends EventEmitter {
     }
 
     this.log("Gateway", `Gateway closed with code ${code}! Reconnecting...`);
-    this.connect();
+    this.connect(true);
   }
 
   // Handle the websocket error event

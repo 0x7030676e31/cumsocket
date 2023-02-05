@@ -68,7 +68,7 @@ export default class ChatGPT {
     this.ctx.log("ChatGPT", `Loaded ${rows.length} converations from the database`);
   }
 
-  @Core.listen("MESSAGE_CREATE")
+  @Core.listen("MESSAGE_CREATE", "MESSAGE_UPDATE")
   public async onMessage(msg: types.MESSAGE_CREATE): Promise<void> {
     // Check for message correctness
     if (!msg.content.startsWith(this.mention) || this.selfID === msg.author.id) return;
@@ -162,7 +162,7 @@ export default class ChatGPT {
 
     // Update placeholder message
     this.ctx.api.messages.edit(msg.channel_id, response.data.id, {
-      ...(!tooLong && { content: isBad ? "Chatgpt response contains some bad words which are unwelcome on this server <:flarogus:888054896769773600>" : gptResponse.text}),
+      ...((!tooLong || isBad) && { content: isBad ? "Chatgpt response contains some bad words which are unwelcome on this server <:flarogus:888054896769773600>" : gptResponse.text}),
       ...(files! && { attachments: [{
         id: files.data.attachments[0].id.toString(),
         filename: "response.txt",
