@@ -8,7 +8,6 @@ Cumsocket is a "simple" Discord module based selfbot written in TypeScript that 
 - [Default modules](#Default-modules)
 - [Module structure](#Module-structure)
 - [Worth mentioning](#Worth-mentioning)
-- [Dependencies](#Dependencies)
 - [Future plans](#Future-plans)
 
 # Features
@@ -32,7 +31,6 @@ Cumsocket is a "simple" Discord module based selfbot written in TypeScript that 
 # Default modules
 - `egg` - Reacting to message containing eggs, and soon to images too! (Why? Idk)
 - `pong` - Simple ping pong module
-- `chatgpt` - Chatbot using GPT-3 model, responds to messages that start with mention
 - `bridge` - Used for copying attachments from multiple channels to one specified channel using webhooks
 - `math` - Simple math module that can evaluate simple math expressions
 - `permissions` - Permissions management module, used for managing permissions for other modules
@@ -41,7 +39,6 @@ Cumsocket is a "simple" Discord module based selfbot written in TypeScript that 
 # Latest changes
 - Fixed permissions append function
 - Fixed bridge avatar not showing
-- ChatGPT error handling (+ it's working again)
 - `isImportant` module property
 
 # Module structure
